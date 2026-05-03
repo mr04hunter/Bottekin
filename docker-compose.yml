@@ -1,0 +1,159 @@
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - monitoring
+
+  discord-bot:
+    image: ${DOCKER_IMAGE}
+    build: .
+    command: python bot.py --init_db --update_or_create --sync
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: always
+    volumes:
+      - ./words.txt:/app/words.txt
+      - ./logs:/app/logs
+    networks:
+      - monitoring
+
+  promtail-config:
+    image: alpine:latest
+    volumes:
+      - ./promtail-cloud-config.yml:/tmp/promtail-config.yml.template:ro
+      - promtail_config:/config
+    environment:
+      - GRAFANA_LOKI_URL=${GRAFANA_LOKI_URL}
+      - GRAFANA_LOKI_USER=${GRAFANA_LOKI_USER}
+      - GRAFANA_LOKI_PASSWORD=${GRAFANA_LOKI_PASSWORD}
+    env_file:
+      - .env
+    command: >
+      sh -c "
+        apk add --no-cache gettext &&
+        envsubst < /tmp/promtail-config.yml.template > /config/promtail-config.yml &&
+        echo 'Promtail config generated successfully' &&
+        cat /config/promtail-config.yml
+      "
+    networks:
+      - monitoring
+
+  promtail:
+    image: grafana/promtail:2.9.0
+    container_name: promtail
+    volumes:
+      - ./logs:/var/log/discord-bot:ro
+      - promtail_config:/etc/promtail:ro
+    command: -config.file=/etc/promtail/promtail-config.yml
+    networks:
+      - monitoring
+    depends_on:
+      promtail-config:
+        condition: service_completed_successfully
+    restart: always
+
+  prometheus-config:
+    image: alpine:latest
+    volumes:
+      - ./prometheus.yml:/tmp/prometheus.yml.template:ro
+      - prometheus_config:/config
+    environment:
+      - GRAFANA_PROMETHEUS_URL=${GRAFANA_PROMETHEUS_URL}
+      - GRAFANA_USER=${GRAFANA_USER}
+      - GRAFANA_PASSWORD=${GRAFANA_PASSWORD}
+    env_file:
+      - .env
+    command: >
+      sh -c "
+        apk add --no-cache gettext &&
+        envsubst < /tmp/prometheus.yml.template > /config/prometheus.yml &&
+        echo 'Config generated successfully'
+      "
+    networks:
+      - monitoring
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus_config:/etc/prometheus:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      prometheus-config:
+        condition: service_completed_successfully
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    restart: always
+    networks:
+      - monitoring
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    env_file:
+      - .env
+    networks:
+      - monitoring
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host:ro
+    env_file:
+      - .env
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - monitoring
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: ${DATA_SOURCE_NAME}
+    ports:
+      - "9187:9187"
+    depends_on:
+      - postgres
+    networks:
+      - monitoring
+
+volumes:
+  prometheus_config:
+  promtail_config:
+  postgres_data:
+  prometheus_data:
+
+networks:
+  monitoring:
+    driver: bridge

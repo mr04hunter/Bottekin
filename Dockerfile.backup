@@ -1,0 +1,13 @@
+FROM postgres:15
+
+RUN apt-get update && apt-get install -y cron && rm -rf /var/lib/apt/lists/*
+
+COPY scripts/backup.sh /scripts/backup.sh
+COPY scripts/backup-cron.sh /scripts/backup-cron.sh
+COPY scripts/cleanup-backups.sh /scripts/cleanup-backups.sh
+
+RUN chmod +x /scripts/backup.sh /scripts/backup-cron.sh /scripts/cleanup-backups.sh
+
+RUN mkdir -p /root && touch /root/.pgpass && chmod 600 /root/.pgpass
+
+CMD ["/scripts/backup-cron.sh"]

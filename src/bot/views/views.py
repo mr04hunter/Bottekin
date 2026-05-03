@@ -1,0 +1,91 @@
+from __future__ import annotations
+from discord.ui import LayoutView, Container, TextDisplay, ActionRow, MediaGallery
+from discord import  Member, Message, MediaGalleryItem
+from discord import Interaction
+import discord
+import re
+from bot.logging import get_logger
+
+logger = get_logger(name="views")
+
+
+class DeleteQuoteButton(discord.ui.DynamicItem[discord.ui.Button], template=r"delete_quote_(?P<author>\d+)_(?P<caller>\d+)"):
+    def __init__(self, author_id: int, caller_id: int):
+        super().__init__(
+            discord.ui.Button(
+                label="Remove my quote",
+                style=discord.ButtonStyle.danger,
+                custom_id=f"delete_quote_{author_id}_{caller_id}"
+            )
+        )
+        self.author_id = author_id
+        self.caller_id = caller_id
+
+    @classmethod
+    async def from_custom_id(cls, interaction: Interaction, item: discord.ui.Button, match: re.Match): #type: ignore
+        return cls(int(match["author"]), int(match["caller"]))
+
+    async def callback(self, interaction: Interaction):
+        allowed = {self.author_id, self.caller_id}
+
+        if interaction.user.id not in allowed:
+            await interaction.response.send_message(
+                "You can't remove this quote.", ephemeral=True
+            )
+            return
+
+        try:
+            if interaction.message:
+                await interaction.message.delete()
+                await interaction.response.send_message(
+                    content="The quote message has been removed successfully",
+                    delete_after=10,
+                    ephemeral=True
+                )
+        except Exception as e:
+            logger.error(f"error: {e}")
+
+
+class QuoteButtons(ActionRow):
+    def __init__(self, author_id: int, caller_id: int) -> None:
+        super().__init__()
+        self.add_item(DeleteQuoteButton(author_id, caller_id))
+
+
+
+class QuoteView(LayoutView):
+    def __init__(self, *, timeout: float | None = None,
+                 message: Message, file_q: discord.File,
+                 author_id: int, caller_id: int) -> None:
+        super().__init__(timeout=timeout)
+        self.message = message
+        self.buttons = QuoteButtons(author_id, caller_id)
+        self.text_display = TextDisplay(
+            content=f"[Jump to the original message]({message.jump_url})", id=1
+        )
+        self.m_item = MediaGalleryItem(media=file_q)
+        self.m_galley = MediaGallery(self.m_item, id=3)
+        self.add_item(self.text_display)
+        self.add_item(self.m_galley)
+        self.add_item(self.buttons)
+
+
+
+
+class HelpView(LayoutView):
+    def __init__(self, dev_user: Member, rules_channel_url: str, timeout: int = 180) -> None:
+        self.dev_user = dev_user
+        self.rules_channel_url = rules_channel_url
+        super().__init__(timeout=timeout)
+        text = ("""**\nCOMMANDS**\n**/testtekin stats**\nDisplays the given user's statistics\nIf the user option not given it displays statistics of the user who called the command.\n
+        \n**/bottekin make_it_quote**\nGenerates a quote imaage based on the given message content.\nIn order to use this command, right click on a message hover on apps and click make_it_quote. The message content should be more than 5 characters and less than 500 characters\nThe Original message's author can delete the bot's quote message by clicking remove my quote button.\n"Remove my quote button" is visible to everyone but only responsive to the original message's author and to the user who called the command"""
+        f"**\nCONTACT**\nYou can send an email to aiden8hunter@gmail.com\nAnd feel free to send a dm to me {self.dev_user.mention}\n"
+        f"**\nPRIVACY**\nThis bot cannot access any private data or does not store any private data.\nThe stored data are:\nuser id and username provided by discord API\nTrack titles you shared in the server\nFeedback message content and statistics of shared tracks, feedback messages, challenges you participated&won bot stores these data to present the statistics to you and the other members.\nBy default, the bot is set to **permanently** delete your data from database after you leave the server.\n**Optionally**, you can set the bot to keep your data by adding a :white_check_mark: to the message on {self.rules_channel_url}.This way, the bot will keep your data even if you leave the server and if you join the server again, your statistics will be preserved.")
+ 
+        self.first_page_text = text
+        self.title_display: TextDisplay = TextDisplay(content=f"**TESTTEKİN HELP** 🆘\n")
+        self.content_display: TextDisplay = TextDisplay(content=self.first_page_text)
+        self.container = Container(self.title_display, self.content_display, accent_colour=discord.Color.dark_purple())
+
+        self.add_item(self.container)
+

@@ -1,0 +1,276 @@
+version: "3.8"
+
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: botdb
+      POSTGRES_USER_FILE: /run/secrets/db_user
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+
+    secrets:
+      - db_password
+      - db_user
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    deploy:
+
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+
+    init: true
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aiden -d botdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - monitoring
+
+  postgres-backup:
+    image: a8hunter/discord-bot:backup-latest
+    depends_on:
+      - postgres
+    secrets:
+      - db_user
+      - db_password
+      - db_name
+      - db_host
+    volumes:
+      - /dc-bot-project/backups:/backups
+      - /dc-bot-project/scripts:/scripts:ro
+    environment:
+      BACKUP_RETENTION_DAYS: 7
+      BACKUP_KEEP_WEEKLY: 4
+      BACKUP_KEEP_MONTHLY: 3
+    deploy:
+
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      placement:
+        constraints:
+          - node.role == manager
+    init: true
+    networks:
+      - monitoring
+    command: ["/scripts/backup-cron.sh"]
+
+    
+
+  discord-bot:
+    image: a8hunter/discord-bot:$IMAGE_TAG
+    depends_on:
+      - postgres
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+    init: true
+
+    deploy:
+
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 10
+
+      update_config:
+        failure_action: rollback
+        monitor: 60s 
+        order: start-first             
+        max_failure_ratio: 0.
+
+    command: python -m bot --update_or_create --sync
+    env_file: 
+      - /dc-bot-project/.env
+
+    secrets:
+      - db_health_url
+      - db_host
+      - db_mig_url
+      - db_name
+      - db_password
+      - db_port
+      - db_url
+      - db_user
+      - discord_token
+      - dc_webhook
+      - spotify_api_client_id
+      - spotify_api_client_secret
+
+    ports:
+      - 8000:8000
+    volumes:
+      - /dc-bot-project/words.txt:/app/words.txt
+      - /dc-bot-project/logs:/app/logs
+    networks:
+      - monitoring
+
+ 
+  alloy:
+    image: grafana/alloy:v1.10.2
+ 
+    env_file:
+      - /dc-bot-project/.env
+
+    volumes:
+      - /dc-bot-project/logs:/app/logs:ro
+      - /dc-bot-project/alloy:/etc/alloy
+    
+    secrets:
+      - grafana_loki_password
+      - grafana_password
+    
+    command: 
+      - run
+      - /etc/alloy/alloy.alloy
+      - --server.http.listen-addr=0.0.0.0:12345
+    deploy:
+
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+
+
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+
+    ports:
+      - "12345:12345"
+    
+    init: true
+    
+    networks:
+      - monitoring
+
+
+  node-exporter:
+    image: prom/node-exporter:v1.9.1
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host:ro
+    env_file:
+      - /dc-bot-project/.env
+    
+    init: true
+
+    deploy:
+
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+
+
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - monitoring
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.18.0
+    environment:
+      DATA_SOURCE_NAME: $DATA_SOURCE_NAME
+
+    init: true
+
+    deploy:
+
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+
+
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+
+
+    ports:
+      - "9187:9187"
+    depends_on:
+      - postgres
+    networks:
+      - monitoring
+
+volumes:
+  postgres_data:
+
+networks:
+  monitoring:
+    driver: overlay
+    attachable: true
+
+
+
+
+secrets:
+  grafana_password:
+    external: true
+  grafana_loki_password:
+    external: true
+  db_user:
+    external: true
+  db_password:
+    external: true
+  db_name:
+    external: true
+  db_host:
+    external: true
+  db_mig_url:
+    external: true
+  discord_token:
+    external: true
+  db_url:
+    external: true
+  db_port:
+    external: true
+  db_health_url:
+    external: true
+  dc_webhook:
+    external: true
+  spotify_api_client_id:
+    external: true
+  spotify_api_client_secret:
+    external: true
+  grafana_prometheus_url:
+    external: true

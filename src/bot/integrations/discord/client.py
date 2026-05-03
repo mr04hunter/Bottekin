@@ -1,0 +1,169 @@
+from discord import Object
+from datetime import datetime
+from bot.logging import get_logger
+from typing import TYPE_CHECKING
+
+from bot.utils.retry import with_retry
+
+if TYPE_CHECKING:
+    from bot.types.protocols import ChannelProvider
+
+
+logger = get_logger("base_service")
+
+
+class DcClient:
+    def __init__(self, bot: "ChannelProvider") -> None:
+        self._bot = bot
+
+
+
+    @with_retry()
+    async def safe_discord_call(self, coro, operation: str, default=None):
+        """
+        Execute a Discord API call, handling NotFound/Forbidden gracefully.
+        Returns default value instead of raising for expected Discord errors.
+        """
+        import discord
+        try:
+            return await coro
+        except discord.NotFound:
+            logger.bind(operation=operation).debug("Discord resource not found, skipping")
+            return default
+        except discord.Forbidden:
+            logger.bind(operation=operation).warning("Missing Discord permissions")
+            return default
+        except discord.HTTPException as e:
+            if e.status == 429:
+                logger.bind(
+                    operation=operation,
+                    retry_after=getattr(e, "retry_after", None)
+                ).warning("Discord rate limit hit")
+            else:
+                logger.bind(operation=operation, status=e.status).error("Discord HTTP error")
+            return default
+        
+    
+    @with_retry()
+    async def safe_fetch_messages(
+        self,
+        channel,
+        operation: str,
+        limit:int | None = None,
+        after:Object | datetime | None = None,
+        before:Object | datetime | None = None,
+        oldest_first: bool = False,
+        default=[]) -> list:
+        import discord
+        try:
+            messages = [message async for message in channel.history(limit=limit, after=after, before=before, oldest_first=oldest_first)]
+            return messages
+        except discord.NotFound:
+            logger.bind(operation=operation).debug("Discord resource not found, skipping")
+            return default
+        except discord.Forbidden:
+            logger.bind(operation=operation).warning("Missing Discord permissions")
+            return default
+        except discord.HTTPException as e:
+            if e.status == 429:
+                logger.bind(
+                    operation=operation,
+                    retry_after=getattr(e, "retry_after", None)
+                ).warning("Discord rate limit hit")
+            else:
+                logger.bind(operation=operation, status=e.status).error("Discord HTTP error")
+            return default
+        
+
+    @with_retry()
+    async def safe_fetch_members(
+        self,
+        guild,
+        operation: str,
+        limit:int | None = None,
+        after:Object | datetime | None = None,
+        before:Object | datetime | None = None,
+        oldest_first: bool = False,
+        default=[]) -> list:
+        import discord
+        try:
+            members = [member async for member in guild.fetch_members(limit=limit, after=after)]
+            return members
+        except discord.NotFound:
+            logger.bind(operation=operation).debug("Discord resource not found, skipping")
+            return default
+        except discord.Forbidden:
+            logger.bind(operation=operation).warning("Missing Discord permissions")
+            return default
+        except discord.HTTPException as e:
+            if e.status == 429:
+                logger.bind(
+                    operation=operation,
+                    retry_after=getattr(e, "retry_after", None)
+                ).warning("Discord rate limit hit")
+            else:
+                logger.bind(operation=operation, status=e.status).error("Discord HTTP error")
+            return default
+        
+    
+    @with_retry()
+    async def safe_fetch_reaction_users(
+        self,
+        reaction,
+        operation: str,
+        limit:int | None = None,
+        after:Object | datetime | None = None,
+        before:Object | datetime | None = None,
+        oldest_first: bool = False,
+        default=[]) -> list:
+        import discord
+        try:
+            users = [user async for user in reaction.users(limit=limit, after=after) if not user.bot]
+            return users
+        except discord.NotFound:
+            logger.bind(operation=operation).debug("Discord resource not found, skipping")
+            return default
+        except discord.Forbidden:
+            logger.bind(operation=operation).warning("Missing Discord permissions")
+            return default
+        except discord.HTTPException as e:
+            if e.status == 429:
+                logger.bind(
+                    operation=operation,
+                    retry_after=getattr(e, "retry_after", None)
+                ).warning("Discord rate limit hit")
+            else:
+                logger.bind(operation=operation, status=e.status).error("Discord HTTP error")
+            return default
+    
+    
+    @with_retry()
+    async def safe_fetch_threads(
+        self,
+        channel,
+        operation: str,
+        limit:int | None = None,
+        after:Object | datetime | None = None,
+        before:Object | datetime | None = None,
+        oldest_first: bool = False,
+        default=[]) -> list:
+        import discord
+        try:
+            threads = [user async for user in channel.archived_threads(limit=limit)]
+            return threads
+        except discord.NotFound:
+            logger.bind(operation=operation).debug("Discord resource not found, skipping")
+            return default
+        except discord.Forbidden:
+            logger.bind(operation=operation).warning("Missing Discord permissions")
+            return default
+        except discord.HTTPException as e:
+            if e.status == 429:
+                logger.bind(
+                    operation=operation,
+                    retry_after=getattr(e, "retry_after", None)
+                ).warning("Discord rate limit hit")
+            else:
+                logger.bind(operation=operation, status=e.status).error("Discord HTTP error")
+            return default
+    
