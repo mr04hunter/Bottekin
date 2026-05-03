@@ -1,0 +1,183 @@
+name: Build, Push, and Deploy to Swarm
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  build-bot:
+    runs-on: ubuntu-latest
+    outputs:
+      commit_sha: ${{ steps.meta.outputs.commit_sha }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          
+      - name: Generate image tags
+        id: meta
+        run: |
+          COMMIT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
+          echo "COMMIT_SHA=$COMMIT_SHA" >> $GITHUB_ENV
+          echo "commit_sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
+
+      - name: Build and Push bot image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: |
+            a8hunter/discord-bot:${{ env.COMMIT_SHA }}
+            a8hunter/discord-bot:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+
+  build-backup:
+    runs-on: ubuntu-latest
+    needs: build-bot          
+    steps:
+      - uses: actions/checkout@v3
+      - uses: docker/setup-buildx-action@v2
+      - uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Check if backup image exists
+        id: check-image
+        run: |
+          if docker manifest inspect a8hunter/discord-bot:backup-latest > /dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check if backup files changed
+        id: check-changes
+        run: |
+          if git diff --name-only HEAD~1 HEAD | grep -qE 'Dockerfile.backup|scripts/'; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - uses: docker/build-push-action@v4
+        if: steps.check-image.outputs.exists == 'false' || steps.check-changes.outputs.changed == 'true'
+        with:
+          context: .
+          file: Dockerfile.backup
+          push: true
+          tags: |
+            a8hunter/discord-bot:backup-latest
+            a8hunter/discord-bot:backup-${{ env.COMMIT_SHA }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max 
+
+
+
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [build-bot, build-backup]  
+    steps:
+      - name: Sync Repository to Server
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            cd /dc-bot-project
+            git fetch origin
+            git reset --hard origin/main
+            echo "✅ Synced to $(git rev-parse --short HEAD)"
+
+      - name: Create Pre-Deployment Backup
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            docker exec $(docker ps -qf "name=prodtekin_postgres-backup") \
+              /scripts/backup.sh pre-deployment || {
+              TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+              mkdir -p /dc-bot-project/backups/pre-deployment
+              docker exec $(docker ps -qf "name=prodtekin_postgres") \
+                pg_dump -U aiden -d botdb | gzip > "/dc-bot-project/backups/pre-deployment/backup_${TIMESTAMP}.sql.gz"
+            }
+
+      - name: Deploy to Docker Swarm
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            cd /dc-bot-project
+            export IMAGE_TAG="${{ needs.build-bot.outputs.commit_sha }}"
+            export DATA_SOURCE_NAME="${{ secrets.DATA_SOURCE_NAME }}"
+            
+            mkdir -p deployments
+            
+            curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                -H "Accept: application/vnd.github.v3.raw" \
+                -o docker-swarm.yml \
+                "https://api.github.com/repos/${{ github.repository }}/contents/docker-swarm.yml?ref=${{ github.sha }}"
+            
+            TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+            DEPLOYMENT_FILE="deployments/docker-compose-${IMAGE_TAG}-${TIMESTAMP}.yml"
+            
+            docker pull a8hunter/discord-bot:$IMAGE_TAG
+            docker pull a8hunter/discord-bot:backup-latest
+            
+            envsubst '${IMAGE_TAG} ${DATA_SOURCE_NAME}' < docker-swarm.yml > "$DEPLOYMENT_FILE"
+            ln -sf "docker-compose-${IMAGE_TAG}-${TIMESTAMP}.yml" deployments/current.yml
+            
+            docker stack deploy -c "$DEPLOYMENT_FILE" prodtekin
+            
+            ls -t deployments/docker-compose-*.yml | tail -n +11 | xargs rm -f
+
+      - name: Verify Deployment
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            SERVICE="prodtekin_discord-bot"
+            ATTEMPTS=0
+            MAX_ATTEMPTS=30
+
+            while [ $ATTEMPTS -lt $MAX_ATTEMPTS ]; do
+              CURRENT_TASK=$(docker service ps $SERVICE --format '{{.CurrentState}}' --no-trunc | head -n1)
+              REPLICAS=$(docker service ls --filter name=$SERVICE --format '{{.Replicas}}')
+              
+              echo "Attempt $((ATTEMPTS+1))/$MAX_ATTEMPTS - Status: $CURRENT_TASK | Replicas: $REPLICAS"
+              
+              if echo "$CURRENT_TASK" | grep -q "Running"; then
+                if [[ "$REPLICAS" == "1/1" ]]; then
+                  echo "✅ $SERVICE is running successfully!"
+                  exit 0
+                fi
+              elif echo "$CURRENT_TASK" | grep -qE "(Failed|Rejected|Shutdown)"; then
+                echo "❌ Deployment failed"
+                docker service logs $SERVICE --tail 100
+                exit 1
+              fi
+              
+              ATTEMPTS=$((ATTEMPTS+1))
+              sleep 5
+            done
+            
+            echo "❌ Timeout"
+            docker service logs $SERVICE --tail 100
+            exit 1
