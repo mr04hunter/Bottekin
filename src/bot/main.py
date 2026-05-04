@@ -86,58 +86,58 @@ async def main() -> None:
     from bot.healthcheck import app
     from bot.bottekin import create_bot
     from bot.events.discord_events import register_events
-    uow = UnitOfWork()
-    scheduler = Scheduler(uow=uow)
-    channels = ChannelRegistry()
-    bot = create_bot(channels=channels, config=config)
-    error_handler = ErrorHandler(
-        webhook_url=config.dc_webhook,
-    )
-    decorators.set_error_handler(error_handler)
-    http_client = AioHttpClient()
-    track_extractor = TrackDataExtractor(http=http_client, config=config)
+    async with AioHttpClient() as http_client:
+        uow = UnitOfWork()
+        scheduler = Scheduler(uow=uow)
+        channels = ChannelRegistry()
+        bot = create_bot(channels=channels, config=config)
+        error_handler = ErrorHandler(
+            webhook_url=config.dc_webhook,
+        )
+        decorators.set_error_handler(error_handler)
+        track_extractor = TrackDataExtractor(http=http_client, config=config)
 
 
-    converter = BotConverter(bot=bot)
-    uow = uow
-    event_handler = create_event_handler()
-    event_handler = event_handler
-    extractor = MessageExtractor(bot=bot, config=config, track_extractor=track_extractor)
-    service_container = create_service_container(
-    bot=bot, uow=uow, extractor=extractor,
-    event_handler=event_handler, scheduler=scheduler,
-    converter=converter, config=config, track_extractor=track_extractor)
-    services = service_container
-    
-    scheduler.add_most_active_periods_job(service=service_container.leaderboard)
+        converter = BotConverter(bot=bot)
+        uow = uow
+        event_handler = create_event_handler()
+        event_handler = event_handler
+        extractor = MessageExtractor(bot=bot, config=config, track_extractor=track_extractor)
+        service_container = create_service_container(
+        bot=bot, uow=uow, extractor=extractor,
+        event_handler=event_handler, scheduler=scheduler,
+        converter=converter, config=config, track_extractor=track_extractor)
+        services = service_container
+        
+        scheduler.add_most_active_periods_job(service=service_container.leaderboard)
 
-    await bot.add_cog(FeedbackCog(bot=bot,services=services, config=config, track_extractor=track_extractor))
-    await bot.add_cog(ChallengeCog(bot=bot,services=services, extractor=extractor, config=config))
+        await bot.add_cog(FeedbackCog(bot=bot,services=services, config=config, track_extractor=track_extractor))
+        await bot.add_cog(ChallengeCog(bot=bot,services=services, extractor=extractor, config=config))
 
-    miq_gen = QuoteService(client=http_client)
-    commands_cog = CommandsCog(bot=bot, miq_gen=miq_gen, services=service_container, scheduler=scheduler, config=config)
-    admin_commands_cog = AdminCommandCog(bot=bot, services=services)
+        miq_gen = QuoteService(client=http_client)
+        commands_cog = CommandsCog(bot=bot, miq_gen=miq_gen, services=service_container, scheduler=scheduler, config=config)
+        admin_commands_cog = AdminCommandCog(bot=bot, services=services)
 
-    bot.tree.add_command(commands_cog.main_group, override=True)
-    bot.tree.add_command(commands_cog.miq_command, override=True)
-    bot.tree.add_command(admin_commands_cog.admin_group, override=True)
+        bot.tree.add_command(commands_cog.main_group, override=True)
+        bot.tree.add_command(commands_cog.miq_command, override=True)
+        bot.tree.add_command(admin_commands_cog.admin_group, override=True)
 
-    await bot.add_cog(commands_cog)
-    await bot.add_cog(admin_commands_cog)
-    
-    register_bot_events(event_handler=event_handler, services=services)
-    register_events(bot=bot, services=service_container, config=config)
+        await bot.add_cog(commands_cog)
+        await bot.add_cog(admin_commands_cog)
+        
+        register_bot_events(event_handler=event_handler, services=services)
+        register_events(bot=bot, services=service_container, config=config)
 
-    
+        
 
-    await wait_for_db()
-    await asyncio.to_thread(run_migrations)
-    await asyncio.gather(
-        start_bot(bot),
-        start_health_server(app)
-    )
+        await wait_for_db()
+        await asyncio.to_thread(run_migrations)
+        await asyncio.gather(
+            start_bot(bot),
+            start_health_server(app)
+        )
 
-    
+        
 
 
 @log_function

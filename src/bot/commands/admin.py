@@ -2,15 +2,13 @@ import discord
 from discord import app_commands, Interaction, Member
 from typing import List,TYPE_CHECKING
 from discord.ext.commands import Cog
+from bot.constants import STATS
 
 if TYPE_CHECKING:
     from bot.bottekin import Bottekin
     from bot.services.container import ServiceContainer
 
-STATS = [
-            "total_challenges_won", "total_submissions",
-            "total_feedbacks_given", "total_feedbacks_received",
-            "total_feedback_words"]
+
 
 
 class AdminGroup(app_commands.Group, name="admin", description="admin commands", default_permissions=discord.Permissions(administrator=True)):

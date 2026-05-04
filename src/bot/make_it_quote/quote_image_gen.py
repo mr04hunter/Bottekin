@@ -86,6 +86,7 @@ class QuoteService:
                 
     async def create_quote(self, text, display_name, avatar_url) -> discord.File:
         content = await self.client.fetch_avatar_image_data(avatar_url)
+
         file = await asyncio.to_thread(self._create_quote_sync, text, display_name, content)
         return file
 
@@ -111,8 +112,10 @@ class QuoteService:
         return img
 
     def _create_quote_sync(self, text, display_name, content) -> discord.File:
-        avatar = Image.open(BytesIO(content)).convert('RGBA')
-        
+        if content:
+            avatar = Image.open(BytesIO(content)).convert('RGBA')
+        else:
+            avatar = Image.open("assets/fallback_avatar.png").convert('RGBA')
  
         avatar = avatar.convert('L')  
         avatar = avatar.convert('RGBA')
@@ -135,10 +138,10 @@ class QuoteService:
         text_x = 1080
         text_y = 200
 
-        fit_text, fit_font = self._get_font_size(text=text, max_width=800, max_height=600, font_path="montserrat.ttf")
+        fit_text, fit_font = self._get_font_size(text=text, max_width=800, max_height=600, font_path="assets/fonts/montserrat.ttf")
 
 
-        fit_author_text, fit_author_font = self._get_font_size(text=f"— {display_name}", max_width=600, max_height=50, font_path="montserrat_italic.ttf")
+        fit_author_text, fit_author_font = self._get_font_size(text=f"— {display_name}", max_width=600, max_height=50, font_path="assets/fonts/montserrat_italic.ttf")
         
         text_on_image = ImageText.Text(text=fit_text, font=fit_font)
         text_bottom = text_on_image.get_bbox()[3]
@@ -155,7 +158,7 @@ class QuoteService:
         
 
 
-        watermark_font = ImageFont.truetype("DejaVuSans.ttf",20)
+        watermark_font = ImageFont.truetype("assets/fonts/DejaVuSans.ttf",20)
         watermark_text = "made with BotTekin"
         watermark_bbox = draw.textbbox((0, 0), watermark_text, font=watermark_font)
         watermark_width = watermark_bbox[2] - watermark_bbox[0]

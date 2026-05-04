@@ -19,11 +19,25 @@ class HttpClient:
 
 class AioHttpClient(HttpClient):
     def __init__(self):
-        self.session = aiohttp.ClientSession()
+        super().__init__()
+        self._session: aiohttp.ClientSession | None = None
 
-    async def close(self):
-        if not self.session.closed:
-            await self.session.close()
+
+    async def __aenter__(self):
+        self._session = aiohttp.ClientSession()
+        return self
+
+    async def __aexit__(self, *args):
+        if self._session:
+            await self._session.close()
+            self._session = None
+
+    @property
+    def session(self):
+        if self._session is None:
+            raise RuntimeError("AioHttpClient must be used as an async context manager")
+        return self._session
+
 
     async def get_json(self, url: str, *, headers=None) -> dict:
         async with self.session.get(url, headers=headers) as resp:
@@ -46,5 +60,7 @@ class AioHttpClient(HttpClient):
 
     async def fetch_avatar_image_data(self, url):
         async with self.session.get(url) as response:
+            if response.status != 200:
+                return None
             content = await response.read()
             return content

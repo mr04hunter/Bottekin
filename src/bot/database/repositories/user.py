@@ -5,6 +5,7 @@ from bot.database.repositories.base import BaseRepository
 from bot.logging import get_logger
 from bot.logging.decorators import log_function
 from datetime import datetime
+from bot.constants import STATS
 from bot.types import UserData
 
 
@@ -92,6 +93,12 @@ class UserRepository(BaseRepository):
 
 
     async def increment_stat(self, user_id: int, field: str, count: int) -> None:
+        if field not in STATS:
+            logger.info(f"{field}")
+            logger.bind(
+                field=str(field)
+            ).warning("Invalid stat field provided")
+            return
         column = getattr(User, field, None)
         if column is None:
             raise ValueError(f"User has no field '{field}'")

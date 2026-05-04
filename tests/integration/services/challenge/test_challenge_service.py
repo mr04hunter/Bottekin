@@ -5,7 +5,6 @@ from bot.types.common import ChallengeEmbedData, ChallengeDurationData
 from tests.factories.discord_factories import make_submission_message
 from unittest.mock import AsyncMock, MagicMock
 
-
 class TestChallengeService:
     @pytest.fixture
     async def service(

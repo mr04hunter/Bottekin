@@ -16,6 +16,11 @@ ALL_TIME_CHALLENGE_WON_LEADERBOARD_TYPE = "all_time_challenge_won_leaderboard"
 CURRENT_CHALLENGE_LEADERBOARD_TYPE = "current_challenge_leaderboard"
 
 
+STATS = [
+            "total_challenges_won", "total_submissions",
+            "total_feedbacks_given", "total_feedbacks_received",
+            "total_feedback_words"]
+
 
 BASE_IMAGE_URL = "https://raw.githubusercontent.com/mr04hunter/bot-assets/refs/heads/main/images/"
 
