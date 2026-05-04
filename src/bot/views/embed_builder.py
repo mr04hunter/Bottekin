@@ -451,7 +451,7 @@ class EmbedBuilder:
 
 
 
-        most_active_member_text = (f"the most active member of all time: {most_active_member_data.member}"
+        most_active_member_text = (f"The most active member of all time: {most_active_member_data.member}"
                                    f"\nTotal **feedback** messages sent: **{most_active_member_data.total_feedback}**"
                                    f"\nTotal **tracks** shared: **{most_active_member_data.total_tracks}**"
                                    f"\nTotal posts: {most_active_member_data.total_feedback+most_active_member_data.total_tracks}"
