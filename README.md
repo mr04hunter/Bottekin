@@ -1,7 +1,5 @@
 # Bottekin Project
 
-## Quick links
-
 ## 1) Preview
 
 <aside>
