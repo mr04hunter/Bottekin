@@ -1,3 +1,4 @@
+import asyncio
 from ctypes import cast
 import re
 import base64
@@ -16,6 +17,8 @@ class TrackDataExtractor:
     def __init__(self, http: "HttpClient", config: "Config") -> None:
         self.http = http
         self.config = config
+        self._api_call_semaphore = asyncio.Semaphore(5)
+        
 
     # ---------- PLATFORM DETECTION ----------
 
@@ -135,15 +138,16 @@ class TrackDataExtractor:
 
     @external_api_call(platform="multi", fallback=("unknown title", "unknown"))
     async def extract_title(self, url: str) -> tuple[str, str]:
-        platform = self.detect_platform(url)
+        async with self._api_call_semaphore:
+            platform = self.detect_platform(url)
 
-        if platform == "youtube":
-            return await self.extract_youtube_title(url), platform
-        if platform == "soundcloud":
-            return await self.extract_soundcloud_title(url), platform
-        if platform == "spotify":
-            return await self.extract_spotify_title(url), platform
-        if platform == "apple_music":
-            return await self.extract_apple_music_title(url), platform
+            if platform == "youtube":
+                return await self.extract_youtube_title(url), platform
+            if platform == "soundcloud":
+                return await self.extract_soundcloud_title(url), platform
+            if platform == "spotify":
+                return await self.extract_spotify_title(url), platform
+            if platform == "apple_music":
+                return await self.extract_apple_music_title(url), platform
 
-        return "unknown title", "unknown"
+            return "unknown title", "unknown"

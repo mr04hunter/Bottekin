@@ -1,5 +1,6 @@
 import asyncio
 from bot.database.unit_of_work import UnitOfWork
+from bot.rate_limiter import init_guards
 from bot.services import create_service_container
 from bot.config import config
 from bot.logging import setup_logging
@@ -82,7 +83,7 @@ def register_bot_events(event_handler:"Emitter", services:"ServiceContainer") ->
     event_handler.on(UPDATE_MOST_ACTIVE_PERIODS_BOARD, callback=services.leaderboard.create_most_active_dates_board)
 
 async def main() -> None:
-
+    init_guards()
     from bot.healthcheck import app
     from bot.bottekin import create_bot
     from bot.events.discord_events import register_events

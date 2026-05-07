@@ -2,7 +2,7 @@ from discord import Object
 from datetime import datetime
 from bot.logging import get_logger
 from typing import TYPE_CHECKING
-
+from bot.rate_limiter import get_guards
 from bot.utils.retry import with_retry
 
 if TYPE_CHECKING:
@@ -54,10 +54,14 @@ class DcClient:
         before:Object | datetime | None = None,
         oldest_first: bool = False,
         default=[]) -> list:
+        guards = get_guards()
         import discord
         try:
-            messages = [message async for message in channel.history(limit=limit, after=after, before=before, oldest_first=oldest_first)]
-            return messages
+            
+            assert guards is not None
+            async with guards.message_fetch:
+                messages = [message async for message in channel.history(limit=limit, after=after, before=before, oldest_first=oldest_first)]
+                return messages
         except discord.NotFound:
             logger.bind(operation=operation).debug("Discord resource not found, skipping")
             return default
@@ -85,10 +89,14 @@ class DcClient:
         before:Object | datetime | None = None,
         oldest_first: bool = False,
         default=[]) -> list:
+        guards = get_guards()
         import discord
         try:
-            members = [member async for member in guild.fetch_members(limit=limit, after=after)]
-            return members
+            
+            
+            async with guards.member_fetch:
+                members = [member async for member in guild.fetch_members(limit=limit, after=after)]
+                return members
         except discord.NotFound:
             logger.bind(operation=operation).debug("Discord resource not found, skipping")
             return default
@@ -116,10 +124,13 @@ class DcClient:
         before:Object | datetime | None = None,
         oldest_first: bool = False,
         default=[]) -> list:
+        guards = get_guards()
         import discord
         try:
-            users = [user async for user in reaction.users(limit=limit, after=after) if not user.bot]
-            return users
+            
+            async with guards.reaction_fetch:
+                users = [user async for user in reaction.users(limit=limit, after=after) if not user.bot]
+                return users
         except discord.NotFound:
             logger.bind(operation=operation).debug("Discord resource not found, skipping")
             return default
@@ -147,10 +158,13 @@ class DcClient:
         before:Object | datetime | None = None,
         oldest_first: bool = False,
         default=[]) -> list:
+        guards = get_guards()
         import discord
         try:
-            threads = [user async for user in channel.archived_threads(limit=limit)]
-            return threads
+            
+            async with guards.thread_fetch:
+                threads = [user async for user in channel.archived_threads(limit=limit)]
+                return threads
         except discord.NotFound:
             logger.bind(operation=operation).debug("Discord resource not found, skipping")
             return default

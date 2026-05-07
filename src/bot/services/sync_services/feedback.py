@@ -1,3 +1,4 @@
+import asyncio
 from datetime import UTC, datetime, timedelta
 from discord import Message, TextChannel, Thread, Object, NotFound
 from bot.database.unit_of_work import UnitOfWork
@@ -6,7 +7,7 @@ from bot.types.protocols import ChannelProvider
 from bot.utils.message_detector import MessageDetector
 from bot.logging import get_logger
 from bot.services.base_service import BaseService
-from typing import cast, TYPE_CHECKING
+from typing import TYPE_CHECKING
 from bot.error_handler.decorators import background_task
 from bot.error_handler.error_handler import BotDatabaseException  
 
@@ -52,20 +53,29 @@ class FeedbackSyncService(BaseService):
         self, 
         channel: TextChannel,
         author_track_ids:dict[int,int]) -> set[Thread]:
-        open_threads: list[Thread] = []
-        archived_threads = await self.bot.client.safe_fetch_threads(channel=channel, operation="feedback_sync fetch_all_threads", default=[])
-        for track_id in author_track_ids.keys():
-            thread = channel.get_thread(track_id)
-            if not thread:
-                thread = await self.bot.client.safe_discord_call(coro=self.bot.guild.fetch_channel(track_id), operation="feedback_sync_service",default=None)
-                if thread is None:
-                    logger.warning("Thread could not fetch, skipping")
-                    continue
 
+
+        fetched = []
+
+        open_threads = list(channel.threads)
+
+        for tid in author_track_ids.keys():
+            thread = channel.get_thread(tid)
+            if thread:
+                fetched.append(thread)
+                continue
             
+            await asyncio.sleep(0.2)
+            
+            thread = await self.bot.client.safe_discord_call(coro=self.bot.guild.fetch_channel(tid), operation="feedback_sync_service",default=None)
+            if thread:
+                fetched.append(thread)
 
-            open_threads.append(cast(Thread,thread))
-        threads = set(open_threads+archived_threads+channel.threads)
+        archived_threads = await self.bot.client.safe_fetch_threads(channel=channel, operation="feedback_sync fetch_all_threads", default=[])
+
+    
+
+        threads = set(open_threads+archived_threads+fetched)
         logger.bind(
             threads=str(threads)
         ).debug("Threads on channel")
@@ -189,7 +199,8 @@ class FeedbackSyncService(BaseService):
                 channel=channel,
                 existing_user_ids=existing_user_ids,
                 author_track_ids=author_track_ids)
-                
+            
+            await asyncio.sleep(0.2)
 
 
  

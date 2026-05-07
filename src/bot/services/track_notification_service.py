@@ -1,3 +1,4 @@
+import asyncio
 from bot.database.unit_of_work import UnitOfWork
 from bot.logging import get_logger
 from discord import NotFound, Object
@@ -71,7 +72,9 @@ class TrackNotificationService(BaseService):
             for message in messages:
                 if message.id not in message_ids:
                     await message.delete()
+                    await asyncio.sleep(0.5)
             after = Object(id=messages[len(messages)-1].id)
+    
 
 
     async def delete_track_with_no_feedback_message(self, message_id: int) -> None:

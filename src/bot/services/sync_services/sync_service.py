@@ -1,3 +1,4 @@
+import asyncio
 from bot.database.unit_of_work import UnitOfWork
 from typing import TYPE_CHECKING
 from bot.database.unit_of_work import UnitOfWork
@@ -42,7 +43,6 @@ class SyncService(BaseService):
 
     
 
-
     async def sync_all(self) -> None:
         await self.user.update_members()
         existing_user_ids = await self.uow.users.get_all_ids()
@@ -52,11 +52,9 @@ class SyncService(BaseService):
         await self.challenge.sync()
 
         
-
         for channel in self.bot.channels.feedback:
-            logger.debug(f"CHANNEL_ID {channel.id}")
-            await self._sync_channel(channel, existing_user_ids)
-
+            await self._sync_channel(channel=channel, existing_user_ids=existing_user_ids)
+        
         await self._safe_emit(CLEANUP_TRACK_WITH_NO_FEEDBACK)
         await self._safe_emit(UPDATE_FEEDBACK_LEADERBOARD)
         await self._safe_emit(SET_FEEDBACK_ROLE)
