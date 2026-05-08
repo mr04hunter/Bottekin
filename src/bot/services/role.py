@@ -57,7 +57,7 @@ class RoleService(BaseService):
         role_map: dict,
     ) -> None:
         try:
-            member = await self.bot.client.safe_discord_call(coro=self.bot.guild.fetch_member(user_id), operation="assign_role_to_member", default=None)
+            member = await self.bot.client.safe_discord_call(coro=lambda:self.bot.guild.fetch_member(user_id), operation="assign_role_to_member", default=None)
 
             if member is None:
                 logger.warning("Member could not be fetched, task aborted")
@@ -66,13 +66,19 @@ class RoleService(BaseService):
             role = self._get_role(total=total, role_map=role_map)
             previous_roles = [
                 r for threshold, r in role_map.items()
-                if threshold < total and r in member.roles
+                if threshold < total and r.id in [role.id for role in member.roles]
             ]
+            logger.bind(
+                roles=str(previous_roles)
+            ).debug(f"previous roles")
             if previous_roles:
-                await member.remove_roles(*previous_roles)
+                await self.bot.client.safe_discord_write_call(
+                    coro=lambda:member.remove_roles(*previous_roles), operation="remove roles")
 
             if role and role not in member.roles:
-                await member.add_roles(role)
+
+                await self.bot.client.safe_discord_write_call(
+                    coro=lambda:member.add_roles(role), operation="add roles")
 
         except discord.NotFound:
             logger.bind(user_id=user_id).warning("Member not found during role assignment")

@@ -1,6 +1,6 @@
 import asyncio
 from bot.database.unit_of_work import UnitOfWork
-from bot.rate_limiter import init_guards
+from bot.concurrency import init_guards
 from bot.services import create_service_container
 from bot.config import config
 from bot.logging import setup_logging

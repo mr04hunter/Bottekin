@@ -94,7 +94,7 @@ class MessageExtractor:
 
 
                 if "host" in fields:
-                    host_member = await self.bot.client.safe_discord_call(coro=self.bot.get_member_named(fields["host"].strip()), operation="extractor:extract_embed_data: fetch_member_named")
+                    host_member = await self.bot.client.safe_discord_call(coro=lambda:self.bot.get_member_named(fields["host"].strip()), operation="extractor:extract_embed_data: fetch_member_named")
 
                     logger.info(f"HOST MEMBER: {host_member}")
                     if host_member:

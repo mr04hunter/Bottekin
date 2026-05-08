@@ -1,3 +1,4 @@
+from discord import TextChannel
 from bot.database.models import User
 from bot.database.unit_of_work import UnitOfWork
 from bot.events.event import UPDATE_CURRENT_CHALLENGE_LEADERBOARD, UPDATE_SUBMISSIONS_LEADERBOARD, UPDATE_WINNERS_LEADERBOARD, UPDATE_FEEDBACK_LEADERBOARD
@@ -103,17 +104,19 @@ class UserService(BaseService):
         from typing import cast
         channel = self.bot.guild.get_channel(track.channel_id)
         if not channel:
-            channel = await self.bot.client.safe_discord_call(coro=self.bot.guild.fetch_channel(track.channel_id), operation="user_service fetch track channel", default=None)
+            channel = await self.bot.client.safe_discord_call(coro=lambda:self.bot.guild.fetch_channel(track.channel_id), operation="user_service fetch track channel", default=None)
             if not channel:
                 logger.warning("Could not fetch channle on notify_track_thread, task aborted")
                 return 
                 
         channel = cast(TextChannel, channel)
-        message = await channel.fetch_message(track.id)
+        message = await self.bot.client.safe_discord_call(coro=lambda:channel.fetch_message(track.id), operation="user left notification fetch message")
+        if not message:
+            return
         if message.thread:
-            notif_message = await message.thread.send(
-                "The author of this track has left the server"
-            )
+            notif_message = await self.bot.client.safe_discord_write_call(coro=lambda th=message.thread:th.send("The author of this track has left the server"), operation="notify user left send message")
+            if not notif_message:
+                return
            
             await self.uow.tracks.create_user_left_notif_message(user_id=user_id, channel_id=notif_message.channel.id, message_id=notif_message.id)
 
@@ -125,19 +128,19 @@ class UserService(BaseService):
             return
         
         for notif_message in notif_messages:
-            channel = await self.bot.client.safe_discord_call(coro=self.bot.guild.fetch_channel(notif_message.channel_id), operation="get_thread_of_user_left_notification_message")
+            channel = await self.bot.client.safe_discord_call(coro=lambda msg=notif_message:self.bot.guild.fetch_channel(msg.channel_id), operation="get_thread_of_user_left_notification_message")
 
-            if not channel:
+            if not isinstance(channel, TextChannel):
                 logger.bind(
                     channel_id=str(notif_message.channel_id)
                 ).warning(f"Channel not found for user left notification")
                 continue
 
-            message = await self.bot.client.safe_discord_call(coro=channel.fetch_message(notif_message.message_id), operation="user_left_notif_retrieve")
+            message = await self.bot.client.safe_discord_call(coro=lambda ch=channel,msg=notif_message:ch.fetch_message(msg.message_id), operation="user_left_notif_retrieve")
             if not message:
                 continue
 
-            await self.bot.client.safe_discord_call(coro=message.delete(),operation="user_left_notif_delete")
+            await self.bot.client.safe_discord_call(coro=lambda msg=message:msg.delete(),operation="user_left_notif_delete")
 
 
 

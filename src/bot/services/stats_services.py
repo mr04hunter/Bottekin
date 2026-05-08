@@ -46,24 +46,29 @@ class StatsService(BaseService):
                         
                 if music_stats.most_words_received_feedback:
                     try:
-                        thread = await guild.fetch_channel(music_stats.most_words_received_feedback.thread_id)
+                        thread = await self.bot.client.safe_discord_call(coro=lambda mwrf=music_stats.most_words_received_feedback.thread_id:guild.fetch_channel(mwrf), operation="most_words_received fb thread fetch")
+                        
                         thread = cast(Thread, thread)
-                        most_words_feedback_message = await thread.fetch_message(music_stats.most_words_received_feedback.id)
-                        music_display_data.most_words_fb_received_message = (most_words_feedback_message, music_stats.most_words_received_feedback.word_count)
+                        most_words_feedback_message = await self.bot.client.safe_discord_call(coro=lambda mwrf=music_stats.most_words_received_feedback.id:thread.fetch_message(mwrf), operation="most_words_feedback fetch_message")
+                        if most_words_feedback_message:
+                            music_display_data.most_words_fb_received_message = (most_words_feedback_message, music_stats.most_words_received_feedback.word_count)
 
                     except discord.NotFound:
                         logger.bind(
                             most_words_feedback_id=str(music_stats.most_words_received_feedback.id)
                         ).warning(f"Could not fetch most_words_received feedback message")
 
-                if music_stats.most_reacted_track:
-                    try:
-                        channel = await guild.fetch_channel(music_stats.most_reacted_track.channel_id)
-                        channel = cast(TextChannel, channel)
-                        most_reacted_track_message = await channel.fetch_message(music_stats.most_reacted_track.id)
-                        music_display_data.most_reacted_track_message = (most_reacted_track_message,music_stats.most_reacted_track.total_reactions)
+                if music_stats.most_reacted_track: 
+                    try: 
+                        channel = await self.bot.client.safe_discord_call(coro=lambda mrt=music_stats.most_reacted_track:guild.fetch_channel(mrt.channel_id), operation="most_reacted_track thread fetch")
+                        channel = cast(TextChannel, channel) 
+                    
+                        
+                        most_reacted_track_message = await self.bot.client.safe_discord_call(coro=lambda ch=channel, tid=music_stats.most_reacted_track.id:ch.fetch_message(tid), operation="most_reacted_track fetch message", default=None)
+                        if most_reacted_track_message:
+                            music_display_data.most_reacted_track_message = (most_reacted_track_message,music_stats.most_reacted_track.total_reactions)
                     except discord.NotFound:
-                        logger.bind(
+                        logger.bind( 
                             most_reacted_track_id=str(music_stats.most_reacted_track.id)
                         ).warning(f"Could not fetch most_reacted_track message")
                 
@@ -71,9 +76,9 @@ class StatsService(BaseService):
                 if music_stats.top_feedbacked_tracks:
                     for track in music_stats.top_feedbacked_tracks:
                         try:
-                            channel = await guild.fetch_channel(track.channel_id)
+                            channel = await self.bot.client.safe_discord_call(coro=lambda t=track:guild.fetch_channel(t.channel_id), operation="top_feedback_tracks fetch channel")
                             channel = cast(TextChannel, channel)
-                            track_message = await channel.fetch_message(track.id)
+                            track_message = await self.bot.client.safe_discord_call(coro=lambda ch=channel:ch.fetch_message(track.id), operation="top_feedback_tracks fetch thread")
                             top_feedbacked_track_messages.append((track_message, track.total_feedbacks))
                         except discord.NotFound:
                             logger.bind(
@@ -118,7 +123,9 @@ class StatsService(BaseService):
             for author, count in feedback_stats.most_feedbacked_authors:
                 try:
                     
-                    member = await client.fetch_user(author.id)
+                    member = await self.bot.client.safe_discord_call(coro=lambda:client.fetch_user(author.id), operation="most_feedbacked_members fetch_user")
+                    if not member:
+                        continue
                     most_feedbacked_members.append((member.mention, count))
 
                 except discord.NotFound:
@@ -133,10 +140,11 @@ class StatsService(BaseService):
 
             if feedback_stats.most_words_feedback:
                 try:
-                    thread = await guild.fetch_channel(feedback_stats.most_words_feedback.thread_id)
+                    thread = await self.bot.client.safe_discord_call(coro=lambda tid=feedback_stats.most_words_feedback.thread_id:guild.fetch_channel(tid), operation="most_words_feedback fetch_thread")
                     thread = cast(Thread, thread)
-                    dc_most_words_feedback_message = await thread.fetch_message(feedback_stats.most_words_feedback.id)
-                    feedback_display_data.most_words_feedback_message = (dc_most_words_feedback_message, feedback_stats.most_words_feedback.word_count)
+                    dc_most_words_feedback_message = await self.bot.client.safe_discord_call(coro=lambda mid=feedback_stats.most_words_feedback.id:thread.fetch_message(mid),operation="most_words_feedback fetch_message")
+                    if dc_most_words_feedback_message:
+                        feedback_display_data.most_words_feedback_message = (dc_most_words_feedback_message, feedback_stats.most_words_feedback.word_count)
                 except discord.NotFound:
                     logger.bind(
                         message_id=feedback_stats.most_words_feedback.id
@@ -186,11 +194,11 @@ class StatsService(BaseService):
             most_votes_received_user, most_votes_received_count = challenge_stats.most_votes_received_by_user
 
             try:
-                
-                dc_most_received_vote_member = await client.fetch_user(most_votes_received_user.id)
-                mention_val = dc_most_received_vote_member.mention
-                
-                challenge_display_data.most_votes_received_by_member = (mention_val, most_votes_received_count)
+                dc_most_received_vote_member = await self.bot.client.safe_discord_call(coro=lambda:client.fetch_user(most_votes_received_user.id), operation="most_votes_received_y_user fetch_user")
+                if dc_most_received_vote_member:
+                    mention_val = dc_most_received_vote_member.mention
+                    
+                    challenge_display_data.most_votes_received_by_member = (mention_val, most_votes_received_count)
 
             except discord.NotFound:
                 logger.bind(
@@ -202,9 +210,10 @@ class StatsService(BaseService):
         if challenge_stats.most_voted_user:
             most_voted_user, most_vote_count = challenge_stats.most_voted_user
             try:
-                dc_most_voted_member = await client.fetch_user(most_voted_user.id)
-                mention_val = dc_most_voted_member.mention
-                challenge_display_data.most_voted_member = (mention_val, most_vote_count)
+                dc_most_voted_member = await self.bot.client.safe_discord_call(coro=lambda:client.fetch_user(most_voted_user.id), operation="most_voted_user fetch_user")
+                if dc_most_voted_member:
+                    mention_val = dc_most_voted_member.mention
+                    challenge_display_data.most_voted_member = (mention_val, most_vote_count)
 
             except discord.NotFound:
                 logger.bind( 

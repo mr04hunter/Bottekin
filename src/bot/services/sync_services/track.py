@@ -60,21 +60,23 @@ class TrackSyncService(BaseService):
     
  
         async def process_message(message: Message):
-            title_platform = await self.extractor.extract_track_message_title(message)
-            if not title_platform:
-                return (None, None, None, None)
-            title, platform = title_platform
-            if not message.thread:
-                try:
-                    await message.create_thread(name=f"Thread for {message.author.display_name}") 
-                except:
-                    logger.warning(f"Failed to create thread for message {message.id}")
-            total_reactions = await self._get_total_reactions(
-                author_id=message.author.id,
-                reactions=message.reactions
-            )
+            async with self._track_semaphore:
+                title_platform = await self.extractor.extract_track_message_title(message)
+                if not title_platform:
+                    return (None, None, None, None)
+                title, platform = title_platform
+                if not message.thread:
+                    try:
+                        await message.create_thread(name=f"Thread for {message.author.display_name}") 
+                    except:
+                        logger.warning(f"Failed to create thread for message {message.id}")
+                total_reactions = await self._get_total_reactions(
+                    author_id=message.author.id,
+                    reactions=message.reactions
+                )
+                await asyncio.sleep(0.1) 
+                return (message, title, platform, total_reactions)
             
-            return (message, title, platform, total_reactions)
 
         while True:
             messages = await self.bot.client.safe_fetch_messages(channel=channel, operation="sync_track", limit=100, oldest_first=True, after=after_date)

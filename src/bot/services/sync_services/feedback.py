@@ -67,7 +67,7 @@ class FeedbackSyncService(BaseService):
             
             await asyncio.sleep(0.2)
             
-            thread = await self.bot.client.safe_discord_call(coro=self.bot.guild.fetch_channel(tid), operation="feedback_sync_service",default=None)
+            thread = await self.bot.client.safe_discord_call(coro=lambda:self.bot.guild.fetch_channel(tid), operation="feedback_sync_service",default=None)
             if thread:
                 fetched.append(thread)
 

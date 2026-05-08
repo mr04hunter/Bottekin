@@ -58,10 +58,10 @@ class TestStatsService:
 
     async def test_fetch_feedback_stats(
         self, service, seeded_stat_tracks,
-        seeded_stat_feedbacks, mock_guild, mock_client, seeded_stats):
+        seeded_stat_feedbacks, mock_guild, mock_bot_client, seeded_stats):
         user = await service.uow.users.get_with_stats(seeded_stat_feedbacks.feedback5.author_id)
 
-        embed = await service.fetch_feedback_stats(guild=mock_guild, user=user, display_name=user.display_name, client=mock_client)
+        embed = await service.fetch_feedback_stats(guild=mock_guild, user=user, display_name=user.display_name, client=mock_bot_client)
 
         assert embed is not None
         embed = embed.to_dict()
@@ -96,11 +96,11 @@ class TestStatsService:
     async def test_fetch_challenge_stats(
         self, service, seeded_submission_stats,
         seeded_vote_stats, seeded_winner_stats,
-        mock_guild, mock_client, seeded_stats,
+        mock_guild, mock_bot_client, seeded_stats,
         seeded_users):
         user = await service.uow.users.get_with_stats(seeded_users.submission_author1.id)
 
-        embed = await service.fetch_challenge_stats(guild=mock_guild, user=user, display_name=user.display_name, client=mock_client)
+        embed = await service.fetch_challenge_stats(guild=mock_guild, user=user, display_name=user.display_name, client=mock_bot_client)
 
         assert embed is not None
         embed = embed.to_dict()
@@ -155,20 +155,20 @@ class TestStatsService:
         #no crash: pass
 
 
-    async def test_empty_user_feedback_stats(self, mock_guild, mock_client, service, seeded_users):
+    async def test_empty_user_feedback_stats(self, mock_guild, mock_bot_client, service, seeded_users):
         user = await service.uow.users.get_with_stats(seeded_users.submission_author1.id)
 
-        embed = await service.fetch_feedback_stats(guild=mock_guild, user=user, display_name=user.display_name, client=mock_client)
+        embed = await service.fetch_feedback_stats(guild=mock_guild, user=user, display_name=user.display_name, client=mock_bot_client)
 
         assert embed is None
 
         #no crash: pass
 
 
-    async def test_empty_user_challenge_stats(self, mock_guild, mock_client, service, seeded_users):
+    async def test_empty_user_challenge_stats(self, mock_guild, mock_bot_client, service, seeded_users):
         user = await service.uow.users.get_with_stats(seeded_users.submission_author1.id)
 
-        embed = await service.fetch_challenge_stats(guild=mock_guild, user=user, display_name=user.display_name, client=mock_client)
+        embed = await service.fetch_challenge_stats(guild=mock_guild, user=user, display_name=user.display_name, client=mock_bot_client)
 
         assert embed is None
 

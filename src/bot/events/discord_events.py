@@ -24,7 +24,8 @@ def register_events(bot: "Bottekin", services:"ServiceContainer", config:"Config
         if message.author.bot:
             return
         if message.channel.id == bot.channels.commands_channel.id:
-            await message.delete()
+            await bot.client.safe_discord_write_call(
+                coro=lambda:message.delete(), operation="commands channel message delete")
 
     @cog_event_handler
     @bot.event

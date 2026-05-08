@@ -272,12 +272,20 @@ def make_reaction(
     reaction.count = count
     _users = users or []
 
-    async def users_gen(*args, **kwargs):
-        for u in _users:
-            yield u
+    def users_gen(limit:int | None=None, after:MagicMock | None=None):
+        r_users = sorted([user for user in _users], key=lambda u: u.id)
+        if after:
+            r_users = [user for user in r_users if user.id > after.id]
+            
+        filtered = r_users[:limit]
+        async def _gen():
+            
+            for u in filtered:
+                yield u
+        return _gen()
 
     # Call the factory each time so a fresh generator is returned
-    reaction.users = MagicMock(side_effect=lambda *a, **kw: users_gen())
+    reaction.users = MagicMock(side_effect=users_gen)
     return reaction
 
 

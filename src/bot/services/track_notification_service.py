@@ -1,4 +1,5 @@
 import asyncio
+
 from bot.database.unit_of_work import UnitOfWork
 from bot.logging import get_logger
 from discord import NotFound, Object
@@ -24,8 +25,16 @@ class TrackNotificationService(BaseService):
             track_with_no_feedback = await t.tracks.get_track_with_no_feedback(track_id=track_id)
             if total_feedback < 3 and not track_with_no_feedback:
                 try:
-                    thread = await self.bot.channels.tracks_no_feedback.guild.fetch_channel(track_id)
-                    message = await self.bot.channels.tracks_no_feedback.send(f"{thread.jump_url} | Total feedback: {total_feedback}")
+                    thread = await self.bot.client.safe_discord_call(
+                        coro=lambda:self.bot.channels.tracks_no_feedback.guild.fetch_channel(track_id),
+                        operation="fetch_trackwith_no_feedback thread")
+                    if not thread:
+                        return
+                    message = await self.bot.client.safe_discord_write_call(
+                        coro=lambda:self.bot.channels.tracks_no_feedback.send(f"{thread.jump_url} | Total feedback: {total_feedback}"),
+                        operation="send track_with_no_feedback message")
+                    if not message:
+                        return
                     await t.tracks.create_track_with_no_feedback(track_id=thread.id, message_id=message.id, url=thread.jump_url, created_at=message.created_at)
                 except NotFound as e:
                     logger.bind(
@@ -34,8 +43,14 @@ class TrackNotificationService(BaseService):
                     return
             elif total_feedback >= 3 and track_with_no_feedback:
                 try:
-                    message = await self.bot.channels.tracks_no_feedback.fetch_message(track_with_no_feedback.message_id)
-                    await message.delete()
+                    message = await self.bot.client.safe_discord_call(
+                        coro=lambda:self.bot.channels.tracks_no_feedback.fetch_message(track_with_no_feedback.message_id), 
+                        operation="track_with_no_feedback fetch_message")
+                    if not message:
+                        return
+                    await self.bot.client.safe_discord_write_call(
+                        coro=lambda:message.delete(), 
+                        operation="track_with_no_feedback delete message")
                     await t.tracks.delete_track_with_no_feedback(track_id=track_id)
                 except NotFound as e:
                     logger.bind(
@@ -43,18 +58,28 @@ class TrackNotificationService(BaseService):
                     ).warning(f"Error on removing track_with_no_feedback")
                     return
             elif total_feedback < 3 and track_with_no_feedback:
-                thread = await self.bot.channels.tracks_no_feedback.guild.fetch_channel(track_id)
-                try:
-                    message = await self.bot.channels.tracks_no_feedback.fetch_message(track_with_no_feedback.message_id)
-                    await message.edit(content=f"{thread.jump_url} | Total feedback: {total_feedback}")
-                except NotFound as e:
-                    logger.bind(
-                        error=str(e)
-                    ).warning("Failed to edit the track_with_no_feedback message Proceeding to create it")
-                    
-                    message = await self.bot.channels.tracks_no_feedback.send(f"{thread.jump_url} | Total feedback: {total_feedback}")
+                thread = await self.bot.client.safe_discord_call(
+                    coro=lambda:self.bot.channels.tracks_no_feedback.guild.fetch_channel(track_id),
+                    operation="track_with_no_fedback fetch thread")
+                if not thread:
+                    return
+
+                message = await self.bot.client.safe_discord_call(
+                    coro=lambda:self.bot.channels.tracks_no_feedback.fetch_message(track_with_no_feedback.message_id),
+                    operation="fetch track_with no feedback message")
+                if not message:
+                    message = await self.bot.client.safe_discord_write_call(
+                        coro=lambda:self.bot.channels.tracks_no_feedback.send(f"{thread.jump_url} | Total feedback: {total_feedback}"),
+                        operation="send track with no feedback message")
+                    if not message:
+                        return
                     await t.tracks.create_track_with_no_feedback(track_id=thread.id, message_id=message.id, url=thread.jump_url, created_at=message.created_at)
                     return
+                    
+                await self.bot.client.safe_discord_write_call(
+                    coro=lambda msg=message:msg.edit(content=f"{thread.jump_url} | Total feedback: {total_feedback}"),
+                    operation="track with no feedback message edit")
+  
                 
 
     async def cleanup_tracks_no_feedback(self) -> None:
@@ -71,7 +96,7 @@ class TrackNotificationService(BaseService):
                 break
             for message in messages:
                 if message.id not in message_ids:
-                    await message.delete()
+                    await self.bot.client.safe_discord_write_call(coro=lambda msg=message:msg.delete(),operation="cleanup track with no feedback delete message")
                     await asyncio.sleep(0.5)
             after = Object(id=messages[len(messages)-1].id)
     
@@ -79,8 +104,10 @@ class TrackNotificationService(BaseService):
 
     async def delete_track_with_no_feedback_message(self, message_id: int) -> None:
         try:
-            message = await self.bot.channels.tracks_no_feedback.fetch_message(message_id)
-            await message.delete()
+            message = await self.bot.client.safe_discord_call(coro=lambda:self.bot.channels.tracks_no_feedback.fetch_message(message_id), operation="delete_track_with_no_feedback fetch_message", default=None)
+            if not message:
+                return
+            await self.bot.client.safe_discord_write_call(coro=lambda:message.delete(), operation="delete track with no feedback message") 
         except Exception as e:
             logger.bind(
                 error=str(e),

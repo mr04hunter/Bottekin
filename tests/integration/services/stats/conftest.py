@@ -385,7 +385,7 @@ def seeded_stats(
 
 
 @pytest.fixture
-def mock_client():
+def mock_bot_client():
     client = MagicMock()
 
     def mock_fetch_user(id):

@@ -1,8 +1,10 @@
+import asyncio
 from datetime import datetime, timedelta, UTC
 from typing import TYPE_CHECKING, cast
 from bot.database.unit_of_work import UnitOfWork
+from bot.exceptions import BotDiscordApiError
 from bot.logging import get_logger
-from discord import TextChannel, Embed, Message
+from discord import NotFound, TextChannel, Embed, Message
 from bot.types.leaderboards.presentation import (
     MostActiveMemberDisplay,
     MostActivePeriodDisplay,
@@ -42,14 +44,18 @@ class LeaderboardService(BaseService):
         try:
             lb_message_id = await self.uow.leaderboards.get_lb_message_id(lb_type=lb_type)
             if not lb_message_id:
-                lb_message = await channel.send(embed=embed)
+                lb_message = await self.bot.client.safe_discord_write_call(
+                    coro=lambda:channel.send(embed=embed), operation="send_lb_message")
+                if not lb_message:
+                    raise BotDiscordApiError(message="Failed to send leaderboard message")
                 lb_message_id = lb_message.id
                 await self.uow.leaderboards.insert_lb_message_id(lb_message_id, lb_type=lb_type)
                 return lb_message
             message = await channel.fetch_message(lb_message_id)
-            await message.edit(embed=embed)
+            await self.bot.client.safe_discord_write_call(
+                coro=lambda:message.edit(embed=embed), operation="lb message update")
             return message 
-        except Exception as e:
+        except NotFound as e:
             logger.bind(
                 error=str(e)
             ).warning("Could not found existing leaderboard message, proceeding to create it")
@@ -143,7 +149,9 @@ class LeaderboardService(BaseService):
             if message.id in lb_message_ids:
                 continue
 
-            await message.delete()
+            await self.bot.client.safe_discord_write_call(
+                coro=lambda msg=message:msg.delete(), operation="lb_message delete")
+            await asyncio.sleep(0.5)
 
     @background_task(operation_name="most_active_dates_leaderboard_update")
     async def create_most_active_dates_board(self) -> None:
@@ -153,7 +161,7 @@ class LeaderboardService(BaseService):
         
         periods_data, most_active_member_data = data
 
-        most_active_member = await self.bot.client.safe_discord_call(coro=self.bot.guild.fetch_member(most_active_member_data.user.id), operation="fetch_most_active_member")
+        most_active_member = await self.bot.client.safe_discord_call(coro=lambda:self.bot.guild.fetch_member(most_active_member_data.user.id), operation="fetch_most_active_member")
         most_active_member_name = most_active_member_data.user.display_name
         if most_active_member:
             most_active_member_name = most_active_member.mention

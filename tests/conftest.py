@@ -262,7 +262,7 @@ def mock_safe_reaction_users(
             try:
                 users = [user async for user in reaction.users(limit=limit, after=after) if not user.bot]
                 return users
-            except:
+            except Exception as e:
                 return default
         
         return _fetch(
@@ -348,7 +348,16 @@ def mock_client():
     def mock_safe_call(coro, operation, default=None):
         async def _call(coro, operation, default):
             try:
-                return await coro
+                return await coro()
+            except:
+                
+                return default
+        return _call(coro, operation, default)
+    
+    def mock_safe_write_call(coro, operation, default=None):
+        async def _call(coro, operation, default):
+            try:
+                return await coro()
             except:
                 return default
         return _call(coro, operation, default)
@@ -359,6 +368,7 @@ def mock_client():
     client.safe_fetch_members = MagicMock(side_effect=mock_safe_fetch_members)
     client.safe_fetch_reaction_users = MagicMock(side_effect=mock_safe_reaction_users)
     client.safe_fetch_threads = MagicMock(side_effect=mock_safe_fetch_threads)
+    client.safe_discord_write_call = MagicMock(side_effect=mock_safe_write_call)
 
     return client
 

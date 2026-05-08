@@ -1,7 +1,7 @@
 from discord.ext.commands import Cog
 from discord import DMChannel
 import discord
-from discord import RawMessageUpdateEvent, RawMessageDeleteEvent, TextChannel, RawReactionActionEvent, ChannelType, Thread, Message
+from discord import RawMessageUpdateEvent, RawMessageDeleteEvent, TextChannel, RawReactionActionEvent, ChannelType, Thread, Message, Reaction
 from discord import TextChannel
 from bot.logging import log_function
 from discord.errors import HTTPException
@@ -12,6 +12,7 @@ from bot.utils.extract_attachment_data import MessageExtractor
 from bot.logging import get_logger
 from bot.types import FeedbackData, UserData
 from bot.error_handler.decorators import cog_event_handler
+import asyncio
 
 
 logger = get_logger("feedback")
@@ -42,7 +43,7 @@ class FeedbackCog(Cog):
     async def on_raw_message_delete(self, payload: RawMessageDeleteEvent) -> None:
        
         logger.debug(f"Message delete called\nMessage_id: {payload.message_id}\nchannel_id: {payload.channel_id}")
-        thread = await self.bot.client.safe_discord_call(coro=self.bot.fetch_channel(payload.channel_id), operation="feedback_cog on_raw_message_delete")
+        thread = await self.bot.client.safe_discord_call(coro=lambda:self.bot.fetch_channel(payload.channel_id), operation="feedback_cog on_raw_message_delete")
         if not thread:
             logger.bind(
                 channel_id=str(payload.channel_id)
@@ -58,15 +59,16 @@ class FeedbackCog(Cog):
 
         if thread.type == discord.ChannelType.text and thread_id in self.config.feedback_channel_ids:
             await self.services.track.delete_track(track_id=payload.message_id)
-            thread = await self.bot.client.safe_discord_call(coro=self.bot.fetch_channel(payload.message_id), operation="feedback_cog:message_delete_event", default=None)
+            thread = await self.bot.client.safe_discord_call(coro=lambda:self.bot.fetch_channel(payload.message_id), operation="feedback_cog:message_delete_event", default=None)
             if not thread:
                 logger.bind(
                     thread_id=str(payload.message_id)
                 ).warning("Thread for message could not found task aborted")
                 return
             thread = cast(Thread, thread)
-            await thread.delete()
-            
+            await self.bot.client.safe_discord_write_call(
+                coro=lambda:thread.delete(), operation="feedback_cog track delete")
+             
             return
         if thread and thread.parent_id not in self.config.feedback_channel_ids:
             logger.debug(f"CHANNEL NOT FOUND")
@@ -81,7 +83,7 @@ class FeedbackCog(Cog):
         if payload and payload.message and payload.cached_message:   
             if payload.message.content == payload.cached_message.content:
                 return
-            thread = await self.bot.client.safe_discord_call(coro=self.bot.fetch_channel(payload.message.channel.id), operation="feedback_cog:message_edit fetch_channel")
+            thread = await self.bot.client.safe_discord_call(coro=lambda:self.bot.fetch_channel(payload.message.channel.id), operation="feedback_cog:message_edit fetch_channel")
             if not thread:
                 logger.bind(
                     channel_id=str(payload.message.channel.id)
@@ -121,6 +123,31 @@ class FeedbackCog(Cog):
         await self.services.feedback.update_feedback(feedback_id=payload.message.id, feedback_data={"word_count":new_word_count, "content":new_content})
 
 
+
+    async def _get_user_reaction_count(self, user_id: int, reactions:list[Reaction]) -> int:
+        reacted_users = []
+
+        for reaction in reactions:
+            after_member = None
+            while True:
+                users = await self.bot.client.safe_fetch_reaction_users(reaction=reaction,operation="feedback_cog fetch_track_reactions",limit=100, after=after_member) 
+                users = [user for user in users if not user.bot]               
+                if users:
+                    logger.bind(
+                        users=str(users)
+                    ).debug("reaction users")
+    
+
+                if not users:
+                    break
+                
+                reacted_users.extend([user.id for user in users])
+                after_member = users[-1] 
+                await asyncio.sleep(0.2) 
+        
+        c = Counter(reacted_users)
+        return c.get(user_id, 0)
+
     @Cog.listener()
     @cog_event_handler
     @log_function
@@ -131,20 +158,22 @@ class FeedbackCog(Cog):
             if payload.member.id == payload.message_author_id:
                 return
             
-            channel = await self.bot.client.safe_discord_call(coro=self.bot.fetch_channel(payload.channel_id), operation="feedback_cog:reaction_add")
+            channel = await self.bot.client.safe_discord_call(coro=lambda:self.bot.fetch_channel(payload.channel_id), operation="feedback_cog:reaction_add")
             if not channel:
                 logger.warning("Failed to fetch channel in feedback_cog:reaction_add_event")
                 return
             channel = cast(TextChannel | Thread, channel)
-            reacted_message = await self.bot.client.safe_discord_call(coro=channel.fetch_message(payload.message_id), operation="feedback_cog:fetch reacted_message")
+            reacted_message = await self.bot.client.safe_discord_call(coro=lambda:channel.fetch_message(payload.message_id), operation="feedback_cog:fetch reacted_message")
             if not reacted_message:
                 logger.bind(
                     message_id=str(payload.message_id)
                 ).warning("failed to fetch the reacted message, task aborted")
                 return
-            c = Counter([user.id for reaction in reacted_message.reactions async for user in reaction.users(limit=None)])
+            
 
-            user_reaction_count = c[payload.user_id]
+            
+
+            user_reaction_count = await self._get_user_reaction_count(user_id=payload.member.id, reactions=reacted_message.reactions)
             if user_reaction_count >= 2:
                 logger.debug(f"User has already reacted.\nReturning...")
                 return
@@ -165,7 +194,7 @@ class FeedbackCog(Cog):
             if payload.user_id == self.bot.user.id:
                 return
         
-            channel = await self.bot.client.safe_discord_call(coro=self.bot.fetch_channel(payload.channel_id), operation="feedback_cog:reaction_remove")
+            channel = await self.bot.client.safe_discord_call(coro=lambda:self.bot.fetch_channel(payload.channel_id), operation="feedback_cog:reaction_remove")
             if not channel:
                 logger.bind(
                     channel_id=str(payload.channel_id)
@@ -176,7 +205,7 @@ class FeedbackCog(Cog):
                 return
             elif (channel.type == ChannelType.private_thread or channel.type == ChannelType.public_thread) and channel.parent_id not in self.config.feedback_channel_ids:
                 return
-            message = await self.bot.client.safe_discord_call(coro=channel.fetch_message(payload.message_id), operation="feedback_cog:reaction_remove fetch reacted message")
+            message = await self.bot.client.safe_discord_call(coro=lambda:channel.fetch_message(payload.message_id), operation="feedback_cog:reaction_remove fetch reacted message")
             if not message:
                 logger.bind(
                     message_id=str(payload.message_id)
@@ -218,7 +247,7 @@ class FeedbackCog(Cog):
         elif (message.channel.type == ChannelType.public_thread or message.channel.type==ChannelType.private_thread):
                 channel = cast(Thread, channel)
                 if channel.parent_id in self.config.feedback_channel_ids:
-                    thread = await self.bot.client.safe_discord_call(coro=self.bot.fetch_channel(message.channel.id), operation="feedback_cog:on_message fetch_channel")
+                    thread = await self.bot.client.safe_discord_call(coro=lambda:self.bot.fetch_channel(message.channel.id), operation="feedback_cog:on_message fetch_channel")
                     if not thread:
                         logger.warning("Failed to fetch thread in feedback_cog:on_message")
                         return
@@ -226,7 +255,7 @@ class FeedbackCog(Cog):
                 
                     if thread.parent_id in self.config.feedback_channel_ids:
                         parent_channel = cast(TextChannel, thread.parent)
-                        track_message = await self.bot.client.safe_discord_call(coro=parent_channel.fetch_message(thread.id), operation="feedback_cog: fetch track message")
+                        track_message = await self.bot.client.safe_discord_call(coro=lambda:parent_channel.fetch_message(thread.id), operation="feedback_cog: fetch track message")
                         if not track_message:
                             logger.bind(
                                 message_id=str(thread.id)

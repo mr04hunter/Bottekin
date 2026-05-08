@@ -149,7 +149,7 @@ class ChallengeCog(Cog):
 
             if str(payload.emoji) in WIN_EMOJIS and payload.user_id == self.config.admin_id:
                 channel = self.bot.channels.official_submission
-                submission_message = await self.bot.client.safe_discord_call(coro=channel.fetch_message(payload.message_id), operation="challenge_cog:reaction_remove fetch reacted_message")
+                submission_message = await self.bot.client.safe_discord_call(coro=lambda:channel.fetch_message(payload.message_id), operation="challenge_cog:reaction_remove fetch reacted_message")
                 if not submission_message:
                     logger.bind(
                         message_id=str(payload.message_id)
