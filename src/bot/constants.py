@@ -35,6 +35,7 @@ get_winners_job_id = "get_winners_job_id"
 challenge_update_data_job_id = "update_challenge_data_id"
 get_last_challenge_job_id = "get_last_challenge_job_id"
 end_challenge_job_id = "terminate_challenge_id"
+end_monthly_challenge_job_id = "terminate_monthly_challenge_id"
 end_voting_job_id = "end_voting_job_id"
 update_most_active_periods_job_id = "most_active_periods_id"
 

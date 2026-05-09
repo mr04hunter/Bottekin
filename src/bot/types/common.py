@@ -44,6 +44,14 @@ class ChallengeEmbedData(EmbedData):
 
 
 @dataclass
+class MonthlyChallengeData:
+    id: int
+    title:str
+    is_active:bool
+    starts_at: datetime
+    ends_at: datetime
+
+@dataclass
 class ChallengeDurationData:
     starts_at: datetime
     ends_at: datetime

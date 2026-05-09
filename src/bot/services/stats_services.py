@@ -78,7 +78,7 @@ class StatsService(BaseService):
                         try:
                             channel = await self.bot.client.safe_discord_call(coro=lambda t=track:guild.fetch_channel(t.channel_id), operation="top_feedback_tracks fetch channel")
                             channel = cast(TextChannel, channel)
-                            track_message = await self.bot.client.safe_discord_call(coro=lambda ch=channel:ch.fetch_message(track.id), operation="top_feedback_tracks fetch thread")
+                            track_message = await self.bot.client.safe_discord_call(coro=lambda t=track,ch=channel:ch.fetch_message(t.id), operation="top_feedback_tracks fetch thread")
                             top_feedbacked_track_messages.append((track_message, track.total_feedbacks))
                         except discord.NotFound:
                             logger.bind(

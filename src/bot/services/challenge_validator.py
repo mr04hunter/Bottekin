@@ -3,7 +3,7 @@ from bot.logging import get_logger
 from discord import Message
 from urlextract import URLExtract
 from bot.utils.link_extractor import TrackDataExtractor
-from bot.database.models import Challenge
+from bot.database.models import Challenge, MonthlyChallenge
 
 if TYPE_CHECKING:
     from bot.config import Config
@@ -15,20 +15,21 @@ class ChallengeValidator:
         self.config = config
 
 
-    def validate(self, message: Message, challenge: Challenge) -> bool:
-
-        if challenge.type == "community" and message.channel.id == self.config.official_submission_channel_id:
-            logger.debug(f"Ongoing challenge is community challenge, received submission is in official challenges channel")
-            return False
-    
-        if challenge.type == "official" and message.channel.id == self.config.tiny_submission_channel_id:
-            logger.debug(f"Ongoing challenge is official challenge, received submission is in community challenges channel")
-            return False
+    def validate(self, message: Message, challenge: Challenge | MonthlyChallenge) -> bool:
+        if isinstance(challenge, Challenge):
+            print("AAAAAAAAAAAAA")
+            if challenge.type == "community" and message.channel.id == self.config.official_submission_channel_id:
+                logger.debug(f"Ongoing challenge is community challenge, received submission is in official challenges channel")
+                return False
         
-        if message.channel.id not in self.config.submission_channel_ids:
-            logger.debug(f"Submission Message is sent from an unrelated channel")
-            return False
-        
+            if challenge.type == "official" and message.channel.id == self.config.tiny_submission_channel_id:
+                logger.debug(f"Ongoing challenge is official challenge, received submission is in community challenges channel")
+                return False
+            
+            if message.channel.id not in self.config.submission_channel_ids:
+                logger.debug(f"Submission Message is sent from an unrelated channel")
+                return False
+            
         if message.created_at > challenge.ends_at:
             logger.debug(f"Submission Message is sent after challenge is ended")
             return False

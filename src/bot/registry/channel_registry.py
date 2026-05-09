@@ -2,9 +2,9 @@
 from __future__ import annotations
 import discord
 from dataclasses import dataclass, field
-from discord import TextChannel, Guild
+from discord import ForumChannel, TextChannel, Guild
 from bot.logging import get_logger
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     from bot.config import Config
@@ -17,6 +17,7 @@ class ChannelRegistry:
     leaderboards: TextChannel = field(init=False)
     winners_hall: TextChannel = field(init=False)
     challenge_info: TextChannel = field(init=False)
+    monthly_challenge_channel: ForumChannel = field(init=False)
     rules: TextChannel = field(init=False)
     official_submission: TextChannel = field(init=False)
     commands_channel: TextChannel = field(init=False)
@@ -30,6 +31,7 @@ class ChannelRegistry:
         self.winners_hall       = await self._fetch(guild, config.winners_hall_channel_id)
         self.commands_channel = await self._fetch(guild, config.commands_channel_id)
         self.challenge_info     = await self._fetch(guild, config.challenge_info_channel_id)
+        self.monthly_challenge_channel = cast(ForumChannel, await self._fetch(guild, config.monthly_challenge_channel_id))
         self.rules              = await self._fetch(guild, config.rules_channel_id)
         self.official_submission = await self._fetch(guild, config.official_submission_channel_id)
         self.tiny_submission    = await self._fetch(guild, config.tiny_submission_channel_id) 

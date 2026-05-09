@@ -104,13 +104,13 @@ class UserService(BaseService):
         from typing import cast
         channel = self.bot.guild.get_channel(track.channel_id)
         if not channel:
-            channel = await self.bot.client.safe_discord_call(coro=lambda:self.bot.guild.fetch_channel(track.channel_id), operation="user_service fetch track channel", default=None)
+            channel = await self.bot.client.safe_discord_call(coro=lambda t=track:self.bot.guild.fetch_channel(t.channel_id), operation="user_service fetch track channel", default=None)
             if not channel:
                 logger.warning("Could not fetch channle on notify_track_thread, task aborted")
                 return 
                 
         channel = cast(TextChannel, channel)
-        message = await self.bot.client.safe_discord_call(coro=lambda:channel.fetch_message(track.id), operation="user left notification fetch message")
+        message = await self.bot.client.safe_discord_call(coro=lambda t=track,ch=channel:ch.fetch_message(t.id), operation="user left notification fetch message")
         if not message:
             return
         if message.thread:

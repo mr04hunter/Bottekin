@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, MagicMock
 from discord import Embed
 import pytest
 from bot.types.common import UserData
-from bot.types.tests.challenge import ChallengeSyncData
+from bot.types.tests.challenge import ChallengeSyncData, MonthlyChallengeSyncData
 from tests.factories.discord_factories import (
     make_feedback_message, make_member,
     make_message,
@@ -194,6 +194,114 @@ def make_submission_messages():
     return _make
 
              
+
+
+@pytest.fixture
+def make_monthly_submission_messages():
+    def _make(
+            members: list[MagicMock],
+            thread_ids :list[int],
+            challenge_end_date: datetime
+    ):
+
+        used_ids = set()
+        messages = []
+    
+        for member in members:
+            thread_id = random.choice(thread_ids)
+            for _ in range(1, random.randint(1,5)):
+                message_id = random.randint(100_000_000, 999_999_999)
+                while message_id in used_ids:
+                    message_id = random.randint(100_000_000, 999_999_999)
+                
+                used_ids.add(message_id)
+                submission_message = make_submission_message(author=member, channel_id=thread_id, id=message_id, created_at=challenge_end_date - timedelta(days=1))
+                messages.append(submission_message)
+        
+        return sorted(messages, key=lambda message: message.id)
+    
+    return _make
+
+
+
+
+
+
+@pytest.fixture
+async def seeded_monthly_challenge_data(test_config, make_monthly_submission_messages, seeded_members):
+    thread1 = make_thread(id=111111111, owner_id=test_config.admin_id, created_at=datetime(year=2026, month=3, day=2, tzinfo=UTC))
+    thread1_starter_message = make_message(
+        id=111111111, author=MagicMock(id=test_config.admin_id),
+        content="DAY 1 (02.03.2026) TEST CHALLENGE")
+    thread1.fetch_message = AsyncMock(return_value=thread1_starter_message)
+
+    thread2 = make_thread(id=1324234234, owner_id=test_config.admin_id, created_at=datetime(year=2026, month=3, day=3, tzinfo=UTC))
+    thread2_starter_message = make_message(
+        id=1324234234, author=MagicMock(id=test_config.admin_id),
+        content="DAY 2 (03.03.2026) TEST CHALLENGE")
+    thread2.fetch_message = AsyncMock(return_value=thread2_starter_message)
+
+    thread3 = make_thread(id=13131345345313, owner_id=test_config.admin_id, created_at=datetime(year=2026, month=3, day=4, tzinfo=UTC))
+    thread3_starter_message = make_message(
+        id=13131345345313, author=MagicMock(id=test_config.admin_id),
+        content="DAY 3 (04.03.2026) TEST CHALLENGE")
+    thread3.fetch_message = AsyncMock(return_value=thread3_starter_message)
+
+    thread4 = make_thread(id=35345345, owner_id=test_config.admin_id, created_at=datetime(year=2026, month=3, day=5, tzinfo=UTC))
+    thread4_starter_message = make_message(
+        id=35345345, author=MagicMock(id=test_config.admin_id, created_at=datetime(year=2026, month=3, day=5, tzinfo=UTC)),
+        content="DAY 4 (05.03.2026) TEST CHALLENGE")
+    thread4.fetch_message = AsyncMock(return_value=thread4_starter_message)
+
+    thread5 = make_thread(id=345345634, owner_id=test_config.admin_id, created_at=datetime(year=2026, month=3, day=6, tzinfo=UTC))
+
+    thread5_starter_message = make_message(
+        id=345345634, author=MagicMock(id=test_config.admin_id),
+        content="DAY 5 (06.03.2026) TEST CHALLENGE")
+    thread5.fetch_message = AsyncMock(return_value=thread5_starter_message)
+
+    thread_message_ids = [thread1_starter_message.id, thread2_starter_message.id, thread3_starter_message.id, thread4_starter_message.id, thread5_starter_message.id]
+
+    threads = []
+
+    
+    challenge_end_date = datetime(year=2026, month=4, day=1, tzinfo=UTC)
+
+    submission_messages = make_monthly_submission_messages(
+            members=seeded_members.all,
+            thread_ids=thread_message_ids,
+            challenge_end_date=challenge_end_date
+        )
+
+    start_date = datetime(year=2026, month=3, day=1, tzinfo=UTC)
+    ends_at = datetime(year=2026, month=4, day=1, tzinfo=UTC)
+    day = 1
+    for thread_message_id in thread_message_ids:
+        _messages = [msg for msg in submission_messages if msg.channel.id == thread_message_id]
+        thread = make_thread(id=thread_message_id, owner_id=test_config.admin_id, messages=_messages, created_at=start_date + timedelta(days=day))
+        thread_starter_message = make_message(
+        id=thread_message_id, author=MagicMock(id=test_config.admin_id),
+        content=f"DAY {day} (0{day}.03.2026) TEST CHALLENGE")
+        thread.fetch_message = AsyncMock(return_value=thread_starter_message)
+        threads.append(thread)
+        day += 1
+
+
+    channel = make_text_channel(id=23432423, threads=[threads[1]], archived_threads=[threads[0], threads[2], threads[3], threads[4]])
+
+    return MonthlyChallengeSyncData(
+        challenge_title= "01_03_2026_monthly_challenge",
+        challenge_id=thread1.id,
+        submission_messages=submission_messages,
+        threads=threads,
+        submission_channel=channel,
+        starts_at=threads[0].created_at,
+        ends_at=ends_at
+    )
+
+
+
+
 
 
 

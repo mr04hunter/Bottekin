@@ -1,11 +1,25 @@
 from dataclasses import dataclass
+from datetime import datetime
 from unittest.mock import MagicMock
-from bot.database.models import User, Submission, Challenge, Vote, Winner
+from bot.database.models import MonthlySubmission, User, Submission, Challenge, Vote, Winner
 from bot.types.common import ChallengeEmbedData
 from bot.types.tests.collections import Collection
 
 
 class SubmissionCollection(Collection[Submission]):
+    @property
+    def submission_ids(self):
+        return [submission.id for submission in self._items.values()]
+    
+    def get_submissions_of_user(self, user_id:int):
+        return [submission for submission in self._items.values() if submission.author_id==user_id]
+    def get_total_of_user(self,user_id:int):
+        return len([submission for submission in self._items.values() if submission.author_id==user_id])
+    def get_submission_ids_of_user(self, user_id:int):
+        return [submission.id for submission in self._items.values() if submission.author_id==user_id]
+    
+
+class MonthlySubmissionCollection(Collection[MonthlySubmission]):
     @property
     def submission_ids(self):
         return [submission.id for submission in self._items.values()]
@@ -46,3 +60,14 @@ class ChallengeSyncData:
 
     submission_channel: MagicMock
     challenge_info_channel: MagicMock
+
+
+@dataclass
+class MonthlyChallengeSyncData:
+    challenge_title: str
+    challenge_id: int
+    submission_messages: list[MagicMock]
+    submission_channel: MagicMock
+    threads: list[MagicMock]
+    starts_at: datetime
+    ends_at: datetime

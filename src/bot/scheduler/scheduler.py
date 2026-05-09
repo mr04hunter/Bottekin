@@ -7,7 +7,8 @@ from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 from bot.constants import (challenge_update_data_job_id, 
                         end_challenge_job_id,end_voting_job_id,
-                        update_most_active_periods_job_id) 
+                        update_most_active_periods_job_id,
+                        end_monthly_challenge_job_id) 
 
 if TYPE_CHECKING:
     from bot.services.make_it_quote_service import MakeItQuoteService
@@ -89,6 +90,20 @@ class Scheduler(AsyncIOScheduler):
         if not self.running:
             self.start()
         
+
+
+    async def schedule_monthly_challenge_jobs(self, ends_at:datetime) -> None:
+        if self.get_job(end_monthly_challenge_job_id):
+            self.remove_job(end_monthly_challenge_job_id)
+        
+        if not datetime.now(tz=UTC) > ends_at:
+            self.add_job(
+                self.uow.challenges.terminate_monthly_challenge, 
+                trigger=DateTrigger(run_date=ends_at), 
+                timezone=UTC, max_instances=1, id=end_monthly_challenge_job_id)
+            
+        if not self.running:
+            self.start()
 
     async def schedule_challenge_jobs(
         self,

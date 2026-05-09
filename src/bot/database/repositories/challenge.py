@@ -1,6 +1,6 @@
 from sqlalchemy import select, update, delete, desc, tuple_, and_
 from sqlalchemy.dialects.postgresql import insert
-from bot.database.models import Challenge, Submission, Vote, Winner, User
+from bot.database.models import Challenge, MonthlyChallenge, MonthlySubmission, Submission, Vote, Winner, User
 from bot.database.repositories.base import BaseRepository
 from bot.logging import get_logger
 
@@ -14,6 +14,15 @@ class ChallengeRepository(BaseRepository):
             result = await session.execute(
                 select(Challenge)
                 .order_by(desc(Challenge.created_at))
+                .limit(1)
+            )
+            return result.scalar_one_or_none()
+        
+    async def get_current_monthly_challenge(self) -> MonthlyChallenge | None:
+        async with self.get_session() as session:
+            result = await session.execute(
+                select(MonthlyChallenge)
+                .order_by(desc(MonthlyChallenge.created_at))
                 .limit(1)
             )
             return result.scalar_one_or_none()
@@ -59,6 +68,37 @@ class ChallengeRepository(BaseRepository):
 
 
 
+
+    async def create_or_update_monthly_challenge(self, data) -> MonthlyChallenge:
+        challenge = None
+        async with self.get_session() as session:
+            challenge = await session.get(MonthlyChallenge, data.id)
+            if not challenge:
+                challenge = MonthlyChallenge(
+                    id=data.id,
+                    title=data.title,
+                    starts_at=data.starts_at,
+                    ends_at=data.ends_at,
+                    is_active=data.is_active,
+                )
+                session.add(challenge)
+            else:
+                challenge.title = data.title
+                challenge.starts_at = data.starts_at
+                challenge.ends_at = data.ends_at
+                challenge.is_active = data.is_active
+
+                
+
+            await session.execute(
+                update(MonthlyChallenge)
+                .where(MonthlyChallenge.id != data.id)
+                .values(is_active=False)
+            )
+
+        return challenge
+
+
     async def delete_challenge(self, challenge_id: int) -> None:
         async with self.get_session() as session:
             challenge = await session.get(Challenge, challenge_id)
@@ -73,6 +113,16 @@ class ChallengeRepository(BaseRepository):
                 await session.execute(
                     update(Challenge)
                     .where(Challenge.id == challenge.id)
+                    .values(is_active=False)
+                )
+
+    async def terminate_monthly_challenge(self) -> None:
+        async with self.get_session() as session:
+            challenge = await self.get_current_monthly_challenge()
+            if challenge:
+                await session.execute(
+                    update(MonthlyChallenge)
+                    .where(MonthlyChallenge.id == challenge.id)
                     .values(is_active=False)
                 )
 
@@ -105,6 +155,27 @@ class ChallengeRepository(BaseRepository):
             ).returning(Submission)
             result = await session.execute(stmt)
             return result.scalar_one_or_none()
+        
+
+    async def create_or_update_monthly_submission(self, data:dict) -> MonthlySubmission | None:
+        """Creates and returns a monthly submission"""
+        async with self.get_session() as session:
+            stmt = insert(MonthlySubmission).values(**data)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["id"], set_={"title": stmt.excluded.title, "edited_at":stmt.excluded.edited_at}
+            ).returning(MonthlySubmission)
+            result = await session.execute(stmt)
+            return result.scalar_one_or_none()
+        
+
+    async def delete_monthly_submission(self, submission_id: int) -> bool:
+        """Deletes a MonthlyChallenge Returns True if deleted."""
+        async with self.get_session() as session:
+            submission = await session.get(MonthlySubmission, submission_id)
+            if not submission:
+                return False
+            await session.delete(submission)
+            return True
 
     async def delete_submission(self, submission_id: int) -> bool:
         """Returns True if deleted."""
@@ -117,6 +188,8 @@ class ChallengeRepository(BaseRepository):
                 return False
             await session.delete(submission)
             return True
+
+
 
     async def add_vote(
         self, submission_id: int, challenge_id: int, voter_id: int
@@ -160,6 +233,11 @@ class ChallengeRepository(BaseRepository):
         async with self.get_session() as session:
             submission = await session.get(Submission, submission_id)
             return submission
+        
+    async def get_monthly_submission(self, submission_id: int) -> MonthlySubmission | None:
+        async with self.get_session() as session:
+            submission = await session.get(MonthlySubmission, submission_id)
+            return submission
     
     async def remove_winner(self, user_id: int, submission_id: int, challenge_id: int) -> None:
         async with self.get_session() as session:
@@ -176,6 +254,18 @@ class ChallengeRepository(BaseRepository):
                 index_elements=["id"],
                 set_={"title": stmt.excluded.title, "edited_at": stmt.excluded.edited_at}
             ).returning(Submission)
+            result = await session.execute(stmt)
+
+            return list(result.scalars().all())
+        
+
+    async def bulk_insert_monthly_submissions(self, submissions: list[dict]) -> list | None:
+        async with self.get_session() as session:
+            stmt = insert(MonthlySubmission).values(submissions)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["id"],
+                set_={"title": stmt.excluded.title, "edited_at": stmt.excluded.edited_at}
+            ).returning(MonthlySubmission)
             result = await session.execute(stmt)
 
             return list(result.scalars().all())
@@ -234,6 +324,16 @@ class ChallengeRepository(BaseRepository):
         async with self.get_session() as session:
             winner = await session.get(Winner, (user_id, submission_id, challenge_id))
             return winner
+
+
+    async def cleanup_monthly_submissions(self, challenge: MonthlyChallenge, thread_id:int, submission_ids:list[int]) -> None:
+        async with self.get_session() as session:
+            deleted_submission_result = await session.execute(select(MonthlySubmission.id).where(
+                    and_(~MonthlySubmission.id.in_(submission_ids), MonthlySubmission.thread_id==thread_id, MonthlySubmission.challenge_id==challenge.id)))
+            deleted_submissions = deleted_submission_result.scalars().all()
+
+            if deleted_submissions:
+                await session.execute(delete(MonthlySubmission).where(MonthlySubmission.id.in_(deleted_submissions)))
 
   
     async def cleanup_challenge_data(self, 

@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from bot.config import Config
 from bot.utils.extract_attachment_data import MessageExtractor
 from bot.types.tests.user import UserCollection
+from bot.database.models import Challenge
 @pytest.fixture
 def mock_guild():
     return make_guild()
@@ -77,6 +78,7 @@ def test_config():
         link_channel_ids="1008",
         attachment_channel_ids="1009, 2009, 3009",
         submission_channels="1004,1005",
+        monthly_challenge_channel_id=9090909090,
         challenge_info_channel_id=1003,
         leaderboards_channel_id=1001,
         commands_channel_id=229422,
@@ -130,18 +132,19 @@ def mock_channel_registery(test_config):
 @pytest.fixture
 def mock_challenge_validator(test_config):
     def validate(message, challenge):
-        if challenge.type == "community" and message.channel.id == test_config.official_submission_channel_id:
-            return False
-    
-        if challenge.type == "official" and message.channel.id == test_config.tiny_submission_channel_id:
-            return False
+        if isinstance(challenge, Challenge):
+            if challenge.type == "community" and message.channel.id == test_config.official_submission_channel_id:
+                return False
         
-        if message.channel.id not in test_config.submission_channel_ids:
-            return False
-        
+            if challenge.type == "official" and message.channel.id == test_config.tiny_submission_channel_id:
+                return False
+            
+            if message.channel.id not in test_config.submission_channel_ids:
+                return False
+            
         if message.created_at > challenge.ends_at:
             return False
-        
+            
         return True
 
     challenge_validator = MagicMock()

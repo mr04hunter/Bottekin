@@ -34,6 +34,20 @@ class MessageExtractor:
 
         return title
 
+
+    def is_challenge_month_starter(self, content: str) -> tuple[str, str, str] | None:
+        """ Parses the message content and returns the challenge month title.
+            Monthly challenge starter messages start with *DAY 1 (day/month/year)*
+        """
+
+        r = r"DAY 1[^0-9]*\(([0-9]{2})\.([0-9]{2})\.([0-9]{4})\)"
+
+        matches = re.findall(r, content)
+
+        if matches:
+            return matches[0]
+
+
     async def extract_embed_data(self, message_id: int, embed: discord.Embed) -> ChallengeEmbedData | None:
         host_id = None
         if embed.fields:

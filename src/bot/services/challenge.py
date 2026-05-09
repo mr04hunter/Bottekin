@@ -1,4 +1,4 @@
-from bot.database.models import Challenge
+from bot.database.models import Challenge, MonthlyChallenge
 from discord import Message
 from urlextract import URLExtract
 from bot.database.unit_of_work import UnitOfWork
@@ -6,7 +6,7 @@ from bot.types.protocols import ChannelProvider
 from bot.logging import get_logger
 from bot.utils.extract_attachment_data import MessageExtractor
 from bot.services.base_service import BaseService
-from bot.types.common import ChallengeEmbedData
+from bot.types.common import ChallengeEmbedData, MonthlyChallengeData
 from bot.events.event import  UPDATE_SUBMISSIONS_LEADERBOARD, UPDATE_CURRENT_CHALLENGE_LEADERBOARD, UPDATE_WINNERS_LEADERBOARD
 from typing import TYPE_CHECKING
 from bot.error_handler.decorators import service_operation
@@ -41,8 +41,38 @@ class ChallengeService(BaseService):
         self.config = config
         self.track_extractor = track_extractor
 
+
+    @service_operation(operation_name="add_monthly_submission")
+    async def add_monthly_submission(self, message:Message) -> None:
+        challenge = await self.uow.challenges.get_current_monthly_challenge()
+        if not challenge:
+            return
+        if not self.validator.validate(message=message, challenge=challenge):
+            logger.bind(
+                message=str(message)
+            ).debug(f"Invalid submission")
+            return
+        
+        title = await self.get_submission_title(message=message)
+
+        await self.uow.challenges.create_or_update_monthly_submission(data={
+            "id":message.id,
+            "title":title,
+            "challenge_id":challenge.id,
+            "thread_id":message.channel.id,
+            "created_at":message.created_at,
+            "edited_at":message.edited_at,
+            "author_id":message.author.id
+        })
+        
+
+
+
     @service_operation(operation_name="add_submission")
     async def add_submission(self,message: Message) -> None:
+        """ Adds a submission to the ongoing official challenge or community challenge
+            Use add_monthly_submission for monthly challenge submissions  
+        """
         challenge = await self.get_current_challenge()
         if not challenge:
             return
@@ -71,6 +101,13 @@ class ChallengeService(BaseService):
         await self._safe_emit(UPDATE_SUBMISSIONS_LEADERBOARD)
         await self._safe_emit(UPDATE_CURRENT_CHALLENGE_LEADERBOARD)
 
+    @service_operation(operation_name="delete_monthly_submission")
+    async def delete_monthly_submission(self, submission_id: int) -> None:
+        await self.uow.challenges.delete_monthly_submission(submission_id=submission_id)
+        await self._safe_emit(UPDATE_SUBMISSIONS_LEADERBOARD)
+
+
+
     @service_operation(operation_name="update_submission")
     async def update_submission(self, message: Message) -> None:
         challenge = await self.uow.challenges.get_current()
@@ -84,6 +121,9 @@ class ChallengeService(BaseService):
         submission_data = await self.extractor.get_submission_data(challenge=challenge, message=message)
 
         await self.uow.challenges.create_or_update_submission(data=submission_data)
+
+
+    
 
     @service_operation(operation_name="ge_current_challenge")
     async def get_current_challenge(self) -> Challenge | None:
@@ -166,5 +206,11 @@ class ChallengeService(BaseService):
         await self.scheduler.schedule_challenge_jobs(data=data.duration)
 
         await self._safe_emit(UPDATE_CURRENT_CHALLENGE_LEADERBOARD)
+        return challenge
+    
+    @service_operation(operation_name="create_or_update_challenge")
+    async def create_or_update_monthly_challenge(self,data: MonthlyChallengeData) -> MonthlyChallenge:
+        challenge = await self.uow.challenges.create_or_update_monthly_challenge(data=data)
+        await self.scheduler.schedule_monthly_challenge_jobs(ends_at=data.ends_at)
         return challenge
 

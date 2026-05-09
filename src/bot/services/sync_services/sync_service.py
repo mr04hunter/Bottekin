@@ -44,6 +44,7 @@ class SyncService(BaseService):
     
 
     async def sync_all(self) -> None:
+        return
         await self.user.update_members()
         existing_user_ids = await self.uow.users.get_all_ids()
         if not existing_user_ids:

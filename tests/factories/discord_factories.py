@@ -50,8 +50,7 @@ def make_message(
     message.reactions = reactions or []
     message.thread = thread
     message.created_at = created_at
-    message.edited_at = edited_at
-    message.created_at = datetime(2024, 6, 1, tzinfo=timezone.utc)
+    message.edited_at = edited_at or datetime(2024, 6, 1, tzinfo=timezone.utc)
     message.jump_url = f"https://discord.com/channels/0/{channel_id}/{id}"
     message.add_reaction = AsyncMock()
     message.create_thread = AsyncMock()
@@ -152,7 +151,8 @@ def make_thread(
     messages: list | None = None,
     type: discord.ChannelType = discord.ChannelType.public_thread,
     archived: bool = False,
-    page_size: int = 100
+    page_size: int = 100,
+    created_at: datetime = datetime(2024, 6, 1, tzinfo=timezone.utc)
     
 ) -> MagicMock:
     thread = MagicMock(spec=discord.Thread)
@@ -165,7 +165,7 @@ def make_thread(
     thread.jump_url = f"https://discord.com/channels/0/{parent_id}/{id}"
     thread.send = AsyncMock()
     thread.delete = AsyncMock()
-    thread.created_at = datetime(2024, 6, 1, tzinfo=timezone.utc)
+    thread.created_at = created_at
     messages = messages or []
     thread.owner_id = owner_id
     thread.starter_message = starter_message or None

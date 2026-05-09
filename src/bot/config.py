@@ -54,6 +54,8 @@ class Config(BaseSettings):
 
 
     challenge_info_channel_id: int = Field(default=...)
+    monthly_challenge_channel_id: int = Field(default=...)
+    monthly_challenge_info_thread_id: int = Field(default=...)
     commands_channel_id: int = Field(default=...)
     leaderboards_channel_id: int = Field(default=...)
     official_submission_channel_id: int = Field(default=...)

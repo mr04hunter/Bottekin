@@ -2,8 +2,8 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from bot.cogs.challenge import ChallengeCog
-from tests.factories.discord_factories import make_message, make_text_channel
-from discord import RawMessageDeleteEvent, RawReactionActionEvent, RawMessageUpdateEvent
+from tests.factories.discord_factories import make_message, make_text_channel, make_thread
+from discord import RawMessageDeleteEvent, RawReactionActionEvent, RawMessageUpdateEvent, Thread
 
 
 class TestChallengeCog:
@@ -62,6 +62,44 @@ class TestChallengeCog:
         assert data.duration.ends_at == embed.ends_at
         assert data.duration.voting_ends_at == embed.ends_at + timedelta(days=1)
 
+
+
+    async def test_on_message_create_monthly_challenge(self, cog, test_config):
+        starts_at = datetime(year=2026, month=3, day=1, tzinfo=UTC)
+        message = make_message(
+            id=123, author=MagicMock(id=test_config.admin_id),created_at=starts_at, content="DAY 1 (02.03.2026) TEST CHALLENGE")
+        
+        channel = make_thread(owner_id=test_config.admin_id, parent_id=test_config.monthly_challenge_channel_id, created_at=starts_at)
+        message.channel = channel
+        message.thread = channel
+
+        await cog.on_message(message=message)
+
+        cog.services.challenge.create_or_update_monthly_challenge.assert_called()
+        kwargs = cog.services.challenge.create_or_update_monthly_challenge.call_args.kwargs
+        data = kwargs["data"]
+        print(f"starts at {data.starts_at}")
+        assert data.title == "02_03_2026_monthly_challenge"
+        assert data.id == message.id
+        assert data.is_active == False
+        assert data.starts_at == starts_at
+        assert data.ends_at == datetime(year=2026, month=4, day=1, tzinfo=UTC)
+
+
+    async def test_on_message_create_invalid_monthly_challenge(self, cog, test_config):
+        starts_at = datetime(year=2026, month=3, day=1, tzinfo=UTC)
+        message = make_message(
+            id=123, author=MagicMock(id=test_config.admin_id),created_at=starts_at, content="DAY 2 (02.03.2026) TEST CHALLENGE")
+        
+        channel = make_thread(owner_id=test_config.admin_id, parent_id=test_config.monthly_challenge_channel_id, created_at=starts_at)
+        message.channel = channel
+        message.thread = channel
+
+        await cog.on_message(message=message)
+
+        cog.services.challenge.create_or_update_monthly_challenge.assert_not_called()
+
+
     async def test_on_message_return_null_embed(self, cog, test_config):
         embed = MagicMock(
             title="test_challenge_title", description="test_description", type="official",
@@ -85,6 +123,17 @@ class TestChallengeCog:
 
         cog.services.challenge.add_submission.assert_called_once_with(message=message)
 
+
+    async def test_on_message_create_monthly_submission(self, cog, test_config):
+        message = make_message(id=123, author=MagicMock(id=143124324, bot=False))
+        channel = make_thread(owner_id=test_config.admin_id, id=3242324, parent_id=test_config.monthly_challenge_channel_id)
+        message.channel = channel
+
+        await cog.on_message(message=message)
+
+        cog.services.challenge.add_submission.assert_not_called()
+        cog.services.challenge.add_monthly_submission.assert_called_once_with(message=message)
+
     
     async def test_on_message_author_bot(self, cog, test_config):
         message = make_message(id=123, author=MagicMock(id=test_config.bot_id))
@@ -102,6 +151,19 @@ class TestChallengeCog:
         await cog.on_raw_message_delete(payload=payload)
 
         cog.services.challenge.delete_submission.assert_called_once_with(payload.message_id)
+
+
+    async def test_on_raw_message_monthly_submission_delete(self, cog, test_config):
+        payload = MagicMock(RawMessageDeleteEvent)
+        payload.channel_id = 23432423
+        payload.message_id = 12345
+
+        cog.bot.guild.fetch_channel = AsyncMock(return_value=make_thread(owner_id=test_config.admin_id, id=1232132423, parent_id=test_config.monthly_challenge_channel_id))
+
+        await cog.on_raw_message_delete(payload=payload)
+
+        cog.services.challenge.delete_submission.assert_not_called()
+        cog.services.challenge.delete_monthly_submission.assert_called_once_with(payload.message_id)
 
     async def test_on_raw_message_delete_unrelated_channel(self, cog, test_config):
         payload = MagicMock(RawMessageDeleteEvent)
@@ -142,6 +204,37 @@ class TestChallengeCog:
         assert data.duration.ends_at == embed.ends_at
         assert data.duration.voting_ends_at == embed.ends_at + timedelta(days=1)
 
+
+
+
+    async def test_on_raw_message_edit_monthly_challenge(self, cog, test_config):
+        starts_at = datetime(year=2026, month=3, day=1, tzinfo=UTC)
+        message = make_message(
+            id=123, author=MagicMock(id=test_config.admin_id),created_at=starts_at, content="DAY 1 (02.03.2026) TEST CHALLENGE")
+        
+        channel = make_thread(owner_id=test_config.admin_id, parent_id=test_config.monthly_challenge_channel_id, created_at=starts_at)
+        message.channel = channel
+        message.thread = channel
+
+        payload = MagicMock(RawMessageUpdateEvent)
+        payload.message = message
+        payload.channel_id = test_config.challenge_info_channel_id
+        payload.message_id = 123
+
+        await cog.on_raw_message_edit(payload=payload)
+
+        cog.services.challenge.update_submission.assert_not_called()
+        cog.services.challenge.create_or_update_challenge.assert_not_called()
+        cog.services.challenge.create_or_update_monthly_challenge.assert_called()
+        kwargs = cog.services.challenge.create_or_update_monthly_challenge.call_args.kwargs
+        data = kwargs["data"]
+        print(f"starts at {data.starts_at}")
+        assert data.title == "02_03_2026_monthly_challenge"
+        assert data.id == message.id
+        assert data.is_active == False
+        assert data.starts_at == starts_at
+        assert data.ends_at == datetime(year=2026, month=4, day=1, tzinfo=UTC)
+
     
     async def test_on_raw_message_edit_submision_update(self, cog, test_config):
         message = make_message(id=123, author=MagicMock(id=143124324))
@@ -155,6 +248,21 @@ class TestChallengeCog:
         await cog.on_raw_message_edit(payload=payload)
 
         cog.services.challenge.update_submission.assert_called_once_with(message=message)
+
+
+    async def test_on_raw_message_edit_monthly_submision_update(self, cog, test_config):
+        message = make_message(id=123, author=MagicMock(id=143124324, bot=False))
+        channel = make_thread(owner_id=test_config.admin_id, id=3242324, parent_id=test_config.monthly_challenge_channel_id)
+        message.channel = channel
+
+        payload = MagicMock(RawMessageUpdateEvent)
+        payload.message = message
+        payload.channel_id = channel.id
+        payload.message_id = message.id
+        await cog.on_raw_message_edit(payload=payload)
+
+        cog.services.challenge.update_submission.assert_not_called()
+        cog.services.challenge.add_monthly_submission.assert_called_once_with(message=message)
         
 
     async def test_on_raw_reaction_add_author_votes_for_themselves(self, cog, test_config):

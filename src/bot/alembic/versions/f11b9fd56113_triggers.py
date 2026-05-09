@@ -1,8 +1,8 @@
 """triggers
 
-Revision ID: 00c9959ffd3a
-Revises: 3948cf551072
-Create Date: 2026-05-01 17:40:13.941585
+Revision ID: f11b9fd56113
+Revises: 5e05589071f0
+Create Date: 2026-05-09 11:57:23.125932
 
 """
 from typing import Sequence, Union
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '00c9959ffd3a'
-down_revision: Union[str, Sequence[str], None] = '3948cf551072'
+revision: str = 'f11b9fd56113'
+down_revision: Union[str, Sequence[str], None] = '5e05589071f0'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -143,6 +143,31 @@ def upgrade() -> None:
     """)
 
 
+    op.execute("""
+        CREATE OR REPLACE FUNCTION monthly_increment_total_submissions()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            UPDATE users SET total_submissions = total_submissions + 1 WHERE id = NEW.author_id;
+            UPDATE monthly_challenges SET total_submissions = total_submissions + 1 WHERE id = NEW.challenge_id;
+
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+    """)
+
+    op.execute("""
+        CREATE OR REPLACE FUNCTION monthly_decrement_total_submissions()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            UPDATE users SET total_submissions = total_submissions - 1 WHERE id = OLD.author_id;
+            UPDATE monthly_challenges SET total_submissions = total_submissions - 1 WHERE id = OLD.challenge_id;
+
+            RETURN OLD;
+        END;
+        $$ LANGUAGE plpgsql;
+    """)
+
+
 
 
     op.execute("""
@@ -215,6 +240,21 @@ def upgrade() -> None:
         AFTER DELETE ON submissions
         FOR EACH ROW
         EXECUTE FUNCTION decrement_total_submissions()
+    """)
+
+
+    op.execute("""
+        CREATE TRIGGER monthly_submission_after_insert
+        AFTER INSERT ON monthly_submissions
+        FOR EACH ROW
+        EXECUTE FUNCTION monthly_increment_total_submissions()
+    """)
+
+    op.execute("""
+        CREATE TRIGGER monthly_submission_after_delete
+        AFTER DELETE ON monthly_submissions
+        FOR EACH ROW
+        EXECUTE FUNCTION monthly_decrement_total_submissions()
     """)
 
     op.execute("""

@@ -1,10 +1,13 @@
-from bot.database.models import Challenge
-from discord import TextChannel, Object
+import asyncio
+from datetime import UTC, datetime
+from bot.database.models import Challenge, MonthlyChallenge
+from discord import ForumChannel, TextChannel, Object, Thread
 from bot.database.unit_of_work import UnitOfWork
 from bot.error_handler.decorators import background_task
 from bot.logging import get_logger
 from typing import cast, TYPE_CHECKING
 from bot.services.base_service import BaseService
+from bot.types.common import MonthlyChallengeData
 from bot.types.protocols import ChannelProvider
 from bot.utils.retry import with_retry
 
@@ -36,7 +39,7 @@ class ChallengeSync(BaseService):
 
     async def sync(self) -> None:
         challenge = await self.sync_current_challenge()
-
+    
         if not challenge:
             logger.info("No challenge found in fetch_and_store_challenge_data")
             return
@@ -57,8 +60,156 @@ class ChallengeSync(BaseService):
             existing_user_ids=existing_user_ids
         )
 
+    
+
+    async def sync_monthly(self):
+        existing_user_ids = await self.uow.users.get_all_ids()
+        monthly_challenge_channel = self.bot.channels.monthly_challenge_channel
+        threads = await self._get_all_threads(channel=monthly_challenge_channel)
+        print(f"THREADS {threads}")
+        monthly_challenge = await self.sync_monthly_challenge(threads=threads)
+        print(f"CHAL { monthly_challenge}")
+        if not monthly_challenge:
+            return
+        
+        for thread in threads:
+            await self._sync_monthly_challenge_thread(challenge=monthly_challenge, thread=thread, existing_user_ids=existing_user_ids)
+            await asyncio.sleep(0.5)
 
 
+
+    async def _get_all_threads(
+        self, 
+        channel: ForumChannel) -> list[Thread]:
+
+        open_threads = list(channel.threads)
+
+        archived_threads = await self.bot.client.safe_fetch_threads(channel=channel, operation="monthly_challenge_sync fetch_all_threads", default=[])
+
+        threads = open_threads+archived_threads
+        threads = [thread for thread in threads if thread.id != self.config.monthly_challenge_info_thread_id]
+
+        
+
+        # Challenge Month concept is introduced in 2026 so thread.created_at should exist, ignore the type checking
+        threads = sorted(threads, key= lambda t: t.created_at) #type: ignore
+        logger.bind(
+            threads=str(threads)
+        ).debug("Threads on channel")
+
+        return threads            
+
+
+
+    async def sync_monthly_challenge(self, threads: list[Thread]) -> MonthlyChallenge | None:
+        
+
+        if not threads:
+            return
+        starter_message = await self.bot.client.safe_discord_call(
+            coro=lambda t=threads[0]: t.fetch_message(t.id), operation="monthly challenge sync fetch starter message")
+        
+        if not starter_message:
+            print("NO STARTER_MESSAGE")
+            return
+        
+        if starter_message.author.id != self.config.admin_id:
+            print("NON ADMIN")
+            return 
+        
+        print(f"{starter_message.content}")
+        title_data = self.extractor.is_challenge_month_starter(starter_message.content)
+
+        if not title_data:
+            print("NO TITLE")
+            return
+        
+        day, month, year = title_data
+
+        challenge_date = threads[0].created_at
+
+        # Challenge Month concept is introduced in 2026 so thread.created_at should exist
+        if not challenge_date:
+            return
+        
+        ends_at = datetime(year=challenge_date.year, month=challenge_date.month+1, day=1, tzinfo=UTC)
+
+        is_active = True if datetime.now(tz=UTC) < ends_at else False
+
+        challenge_data = MonthlyChallengeData(
+            id=threads[0].id,
+            title=f"{day}_{month}_{year}_monthly_challenge",
+            starts_at=challenge_date,
+            ends_at=datetime(year=challenge_date.year, month=challenge_date.month+1, day=1, tzinfo=UTC),
+            is_active=is_active
+        )
+        
+        monthly_challenge = await self.uow.challenges.create_or_update_monthly_challenge(data=challenge_data)
+
+        return monthly_challenge
+
+
+
+    async def _sync_monthly_challenge_thread(self, challenge:MonthlyChallenge, thread: Thread, existing_user_ids:set[int]):
+        submissions = []
+        all_submission_ids = set()
+        after_date = None
+        c=0
+        while True:
+            submission_messages = await self.bot.client.safe_fetch_messages(channel=thread, operation="monthly_challenge_sync", limit=100, after=after_date, oldest_first=True)
+            submission_messages = [message for message in submission_messages if message.author.id in existing_user_ids]
+            logger.bind(
+                after_date=after_date,
+                before_date=challenge.ends_at,
+                messages=str(submission_messages)
+            ).debug("Submission messages debug")
+            if not submission_messages:
+                logger.debug("No submission messages")
+                break
+            
+            print(f"{c} MES IDS {[msg.id for msg in submission_messages]}")
+            c+=1
+            after_date = Object(id=submission_messages[len(submission_messages)-1].id)
+            for submission_message in submission_messages: 
+                if not self.validator.validate(message=submission_message, challenge=challenge):
+                    logger.bind(
+                        message=str(submission_message),
+                        message_content=str(submission_message.content)
+                    ).info(f"Invalid submission message")
+                    continue
+
+                title = await self.extractor.get_submission_title(message=submission_message)
+
+                submission_data = {
+                    "id": submission_message.id,
+                    "challenge_id":challenge.id,
+                    "title": title,
+                    "author_id":submission_message.author.id,
+                    "thread_id":thread.id,
+                    "created_at":submission_message.created_at,
+                    "edited_at":submission_message.edited_at
+                }
+
+                all_submission_ids.add(submission_message.id)
+                submissions.append(submission_data)
+                if len(submissions) >= 50:
+                    logger.bind(
+                    submissions=[str(submission) for submission in submissions]
+                    ).debug("Bulk inserting monthly submissions")
+
+                    await self.uow.challenges.bulk_insert_monthly_submissions(submissions=submissions)
+                    submissions.clear()
+
+        
+        if submissions:
+            logger.debug("Bulk inserting remaining monthly submissions")
+            await self.uow.challenges.bulk_insert_monthly_submissions(submissions=submissions)
+
+        await self.uow.challenges.cleanup_monthly_submissions(challenge=challenge, thread_id=thread.id, submission_ids=list(all_submission_ids))
+
+
+
+            
 
     async def sync_current_challenge(self) -> Challenge | None:
         """
@@ -111,9 +262,11 @@ class ChallengeSync(BaseService):
         submissions = []
         winners = set()
         after_date = challenge.starts_at
+        c = 0
         while True:
             submission_messages = await self.bot.client.safe_fetch_messages(channel=channel, operation="sync_challenge_data", limit=100,after=after_date,before=challenge.ends_at, oldest_first=True)
             submission_messages = [message for message in submission_messages if message.author.id in existing_user_ids]
+            print(f"MES IDS {[]}")
             logger.bind(
                 after_date=after_date,
                 before_date=challenge.ends_at,
@@ -122,7 +275,7 @@ class ChallengeSync(BaseService):
             if not submission_messages:
                 logger.debug("No submission messages")
                 break
-
+            
             after_date = Object(id=submission_messages[len(submission_messages)-1].id)
             for submission_message in submission_messages: 
                 if submission_message.author.id in existing_author_ids:

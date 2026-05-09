@@ -24,6 +24,8 @@ TABLES_TO_TRUNCATE = [
     "challenges",
     "leaderboards",
     "users",
+    "monthly_submissions",
+    "monthly_challenges"
 ]
 
 

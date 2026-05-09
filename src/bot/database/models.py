@@ -113,6 +113,7 @@ class User(Base):
     gave_feedback_to: Mapped[List["Track"]] = relationship("Track", secondary=user_tracks, back_populates="feedback_givers")
     challenges_won: Mapped[List["Winner"]] = relationship(back_populates="winner")
     submissions: Mapped[List["Submission"]] = relationship(back_populates="author", cascade="all, delete-orphan", foreign_keys="Submission.author_id")
+    monthly_submissions: Mapped[List["MonthlySubmission"]] = relationship(back_populates="author", cascade="all, delete-orphan", foreign_keys="MonthlySubmission.author_id")
     votes: Mapped[List["Vote"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     voted_submissions: Mapped[List["Submission"]] = relationship(
     secondary="votes",
@@ -222,6 +223,41 @@ class Challenge(Base):
             result += f"votes: {self.votes}"
 
         return result
+    
+
+
+class MonthlyChallenge(Base):
+    __tablename__ = "monthly_challenges"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, server_default="true")
+   
+    total_submissions: Mapped[int] = mapped_column(Integer, default=0)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    
+    # Relationships
+    submissions: Mapped[List["MonthlySubmission"]] = relationship(back_populates="challenge", cascade="all, delete-orphan")
+
+
+    def __str__(self) -> str:
+        result = f""" id: {self.id}, name: {self.title}"""     
+        insp = inspect(self)
+        
+        
+        if 'submissions' not in insp.unloaded:
+            result += f"submissions: {self.submissions}"
+
+        return result
+
+
+
+
 # ---SUBMISSIONS---
 
 class Submission(Base):
@@ -279,6 +315,54 @@ class Submission(Base):
             result += f"votes: {self.votes}"
         if "voters" not in insp.unloaded:
             result += f"voters {self.voters}"
+        
+        return result
+    
+
+
+class MonthlySubmission(Base):
+    __tablename__ = "monthly_submissions"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    challenge_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("monthly_challenges.id", ondelete="CASCADE"), nullable=False
+    )
+    thread_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    title: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    edited_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), default=None
+    )
+
+    author_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, 
+    )
+
+    # Relationships
+    challenge: Mapped["MonthlyChallenge"] = relationship(back_populates="submissions")
+    author: Mapped["User"] = relationship(back_populates="monthly_submissions", foreign_keys=[author_id])
+
+
+    __table_args__ = (
+        Index("idx_challenge_id_thread_id_submission_id", "challenge_id", "thread_id", "id"),
+       
+    )
+
+    def __str__(self) -> str:
+        result = f""" id: {self.id},
+        thread_id: {self.thread_id}, title: {self.title}, created_at: {self.created_at}"""
+        insp = inspect(self)
+        if "author_id" not in insp.unloaded:
+            result += f"author_id: {self.author_id}"
+        if "challenge_id" not in insp.unloaded:
+            result += f"challenge_id: {self.challenge_id}"
+        if "challenge" not in insp.unloaded:
+            result += f"chalenge: {self.challenge}"
+        if "author" not in insp.unloaded:
+            result += f"author: {self.author}"
+
         
         return result
 

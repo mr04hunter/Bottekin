@@ -1,11 +1,11 @@
-
 from discord.ext.commands import Cog
 import discord
-from discord import RawMessageUpdateEvent, RawMessageDeleteEvent, RawReactionActionEvent, Message
+from discord import MessageType, RawMessageUpdateEvent, RawMessageDeleteEvent, RawReactionActionEvent, Message, Thread
 from bot.logging.decorators import  log_function
 from typing import TYPE_CHECKING
 from bot.logging import get_logger
 from bot.error_handler.decorators import cog_event_handler
+from bot.types.common import MonthlyChallengeData
 
 if TYPE_CHECKING:
     from bot.main import Bottekin
@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from bot.utils.extract_attachment_data import MessageExtractor
     from bot.config import Config
 
+from datetime import UTC, datetime
 
 ATTACHMENT_SUBMISSION = "attachment_submission"
 EXTERNAL_SUBMISSION = "external_submission"
@@ -52,7 +53,7 @@ class ChallengeCog(Cog):
     async def on_message(self,message: discord.Message) -> None:
         if message.author.id == self.config.bot_id:
             return
-
+        logger.debug(f"type{message.type}, thread {message.thread}, ch {message.channel}")
         if self._is_challenge_info_message(message=message):
             challenge_embed_data = await self.extractor.extract_embed_data(message_id=message.id, embed=message.embeds[0])
             if not challenge_embed_data:
@@ -65,7 +66,28 @@ class ChallengeCog(Cog):
             return
         
         elif message.channel.id in self.config.submission_channel_ids:    
-            await self.services.challenge.add_submission(message=message) 
+            await self.services.challenge.add_submission(message=message)
+
+        
+
+        elif (isinstance(message.channel, Thread)
+            and message.channel.parent_id == self.config.monthly_challenge_channel_id
+            and message.thread and message.author.id == self.config.admin_id):
+            title_data = self.extractor.is_challenge_month_starter(content=message.content)
+            if not title_data:
+                return
+            day, month, year = title_data
+            logger.debug(f"forum message thread: {message.thread} channel: {message.channel}")
+            starts_at = message.created_at
+            ends_at = datetime(year=starts_at.year, month=starts_at.month+1,day=1, tzinfo=UTC)
+            is_active = True if datetime.now(tz=UTC) < ends_at else False
+            data = MonthlyChallengeData(
+                id=message.id, title=f"{day}_{month}_{year}_monthly_challenge", is_active=is_active, starts_at=starts_at, ends_at=ends_at)
+            
+            await self.services.challenge.create_or_update_monthly_challenge(data=data)
+        
+        elif isinstance(message.channel, Thread) and message.channel.parent_id == self.config.monthly_challenge_channel_id and not message.author.bot:
+            await self.services.challenge.add_monthly_submission(message=message)
 
                 
     @Cog.listener()
@@ -74,6 +96,12 @@ class ChallengeCog(Cog):
     async def on_raw_message_delete(self, payload: RawMessageDeleteEvent) -> None:
         if payload.channel_id in self.config.submission_channel_ids:
             await self.services.challenge.delete_submission(payload.message_id)
+
+        channel = await self.bot.client.safe_discord_call(
+            coro=lambda: self.bot.guild.fetch_channel(payload.channel_id), operation="monthly_challenge: on_message delete fetch_channel")
+        
+        if isinstance(channel, Thread) and channel.parent_id == self.config.monthly_challenge_channel_id:
+            await self.services.challenge.delete_monthly_submission(payload.message_id)
 
     @Cog.listener()
     @cog_event_handler
@@ -100,6 +128,28 @@ class ChallengeCog(Cog):
 
             await self.services.challenge.update_submission(message=payload.message)
 
+        elif (isinstance(payload.message.channel, Thread)
+            and payload.message.channel.parent_id == self.config.monthly_challenge_channel_id
+            and payload.message.thread and payload.message.author.id == self.config.admin_id):
+            title_data = self.extractor.is_challenge_month_starter(content=payload.message.content)
+            if not title_data:
+                return
+            day, month, year = title_data
+            logger.debug(f"forum message thread: {payload.message.thread} channel: {payload.message.channel}")
+            starts_at = payload.message.created_at
+            ends_at = datetime(year=starts_at.year, month=starts_at.month+1,day=1, tzinfo=UTC)
+            is_active = True if datetime.now(tz=UTC) < ends_at else False
+            
+            data = MonthlyChallengeData(
+                id=payload.message.id, title=f"{day}_{month}_{year}_monthly_challenge", is_active=is_active, starts_at=starts_at, ends_at=ends_at)
+            
+            await self.services.challenge.create_or_update_monthly_challenge(data=data)
+
+        elif (isinstance(payload.message.channel, Thread)
+              and payload.message.channel.parent_id == self.config.monthly_challenge_channel_id 
+              and not payload.message.author.bot):
+            
+            await self.services.challenge.add_monthly_submission(message=payload.message)
 
 
     @Cog.listener()

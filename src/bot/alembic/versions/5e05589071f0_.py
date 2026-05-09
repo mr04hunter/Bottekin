@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: 3948cf551072
+Revision ID: 5e05589071f0
 Revises: 
-Create Date: 2026-05-01 17:40:05.911772
+Create Date: 2026-05-09 11:57:13.640298
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '3948cf551072'
+revision: str = '5e05589071f0'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -26,6 +26,16 @@ def upgrade() -> None:
     sa.Column('type', sa.Text(), nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('type')
+    )
+    op.create_table('monthly_challenges',
+    sa.Column('id', sa.BigInteger(), nullable=False),
+    sa.Column('title', sa.Text(), nullable=False),
+    sa.Column('is_active', sa.Boolean(), server_default='true', nullable=False),
+    sa.Column('total_submissions', sa.Integer(), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('starts_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('ends_at', sa.DateTime(timezone=True), nullable=False),
+    sa.PrimaryKeyConstraint('id')
     )
     op.create_table('user_left_notification_message',
     sa.Column('user_id', sa.BigInteger(), nullable=False),
@@ -67,6 +77,19 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index('idx_challenge_id_is_active', 'challenges', ['id', 'is_active'], unique=False)
+    op.create_table('monthly_submissions',
+    sa.Column('id', sa.BigInteger(), nullable=False),
+    sa.Column('challenge_id', sa.BigInteger(), nullable=False),
+    sa.Column('thread_id', sa.BigInteger(), nullable=False),
+    sa.Column('title', sa.Text(), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('edited_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('author_id', sa.BigInteger(), nullable=False),
+    sa.ForeignKeyConstraint(['author_id'], ['users.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['challenge_id'], ['monthly_challenges.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index('idx_challenge_id_thread_id_submission_id', 'monthly_submissions', ['challenge_id', 'thread_id', 'id'], unique=False)
     op.create_table('tracks',
     sa.Column('id', sa.BigInteger(), nullable=False),
     sa.Column('thread_id', sa.BigInteger(), nullable=False),
@@ -175,9 +198,12 @@ def downgrade() -> None:
     op.drop_index('idx_track_id_channel_id', table_name='tracks')
     op.drop_index('idx_author_id_track_id', table_name='tracks')
     op.drop_table('tracks')
+    op.drop_index('idx_challenge_id_thread_id_submission_id', table_name='monthly_submissions')
+    op.drop_table('monthly_submissions')
     op.drop_index('idx_challenge_id_is_active', table_name='challenges')
     op.drop_table('challenges')
     op.drop_table('users')
     op.drop_table('user_left_notification_message')
+    op.drop_table('monthly_challenges')
     op.drop_table('leaderboards')
     # ### end Alembic commands ###

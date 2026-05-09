@@ -321,3 +321,121 @@ class TestChallengeRepository:
         assert await uow.challenges.get_winner(seeded_users.submission_author1.id,seeded_submissions.submission1.id,seeded_challenge.id) is not None
         assert await uow.challenges.get_winner(seeded_users.submission_author2.id,seeded_submissions.submission2.id, seeded_challenge.id) is None
         assert await uow.challenges.get_winner(seeded_users.submission_author3.id,seeded_submissions.submission3.id, seeded_challenge.id) is None
+
+
+
+    # MONTHLY CHALLENGES #
+
+
+
+    async def test_bulk_insert_monthly_submissions(self, uow, seeded_users, seeded_monthly_challenge):
+        submission1 = {
+            "id":555,
+            "author_id":seeded_users.submission_author1.id,
+            "thread_id":111,
+            "challenge_id":seeded_monthly_challenge.id,
+            "title":"submission1",
+            "created_at":datetime(year=2026, month=3, day=3, tzinfo=UTC)}
+
+
+        submission2 = {
+            "id":554,
+            "author_id":seeded_users.submission_author2.id,
+            "thread_id":111,
+            "challenge_id":seeded_monthly_challenge.id,
+            "title":"submission2",
+            "created_at":datetime(year=2026, month=3, day=3, tzinfo=UTC)}
+        
+        submission3 = {
+            "id":553,
+            "author_id":seeded_users.submission_author3.id,
+            "thread_id":111,
+            "challenge_id":seeded_monthly_challenge.id,
+            "title":"submission3",
+            "created_at":datetime(year=2026, month=3, day=3, tzinfo=UTC)}
+        
+        await uow.challenges.bulk_insert_monthly_submissions([submission1, submission2, submission3])
+
+        submission1_db = await uow.challenges.get_monthly_submission(555)
+        submission2_db = await uow.challenges.get_monthly_submission(554)
+        submission3_db = await uow.challenges.get_monthly_submission(553)
+
+        assert submission1_db.id == 555
+        assert submission1_db.title == "submission1"
+        assert submission1_db.author_id == seeded_users.submission_author1.id
+        assert submission1_db.challenge_id == seeded_monthly_challenge.id
+        assert submission1_db.thread_id == 111
+        assert submission1_db.created_at == datetime(year=2026, month=3, day=3, tzinfo=UTC)
+
+        assert submission2_db.id == 554
+        assert submission2_db.title == "submission2"
+        assert submission2_db.author_id == seeded_users.submission_author2.id
+        assert submission2_db.challenge_id == seeded_monthly_challenge.id
+        assert submission2_db.thread_id == 111
+        assert submission2_db.created_at == datetime(year=2026, month=3, day=3, tzinfo=UTC)
+
+        assert submission3_db.id == 553
+        assert submission3_db.title == "submission3"
+        assert submission3_db.author_id == seeded_users.submission_author3.id
+        assert submission3_db.challenge_id == seeded_monthly_challenge.id
+        assert submission3_db.thread_id == 111
+        assert submission3_db.created_at == datetime(year=2026, month=3, day=3, tzinfo=UTC)
+
+
+
+    async def test_bulk_insert_updates_monthly_submissions(
+            self, uow, seeded_users, seeded_monthly_challenge, seeded_monthly_submissions
+    ):
+    
+
+        updated_submission ={
+                "id":seeded_monthly_submissions.monthly_submission1.id,
+                "author_id":seeded_users.submission_author1.id,
+                "thread_id":111,
+                "challenge_id":seeded_monthly_challenge.id,
+                "title":"updated_title",
+                "created_at":datetime(year=2026, month=3, day=3, tzinfo=UTC)}
+
+
+        await uow.challenges.bulk_insert_monthly_submissions([updated_submission])
+
+        submission = await uow.challenges.get_monthly_submission(seeded_monthly_submissions.monthly_submission1.id)
+
+        assert submission.title == "updated_title"
+
+
+    async def test_cleanup_monthly_submissions(
+            self, uow, seeded_users, seeded_monthly_challenge, seeded_monthly_submissions
+    ):
+        #deleting all submissions
+        await uow.challenges.cleanup_monthly_submissions(challenge=seeded_monthly_challenge, thread_id=111, submission_ids=[])
+        
+
+
+        assert await uow.challenges.get_monthly_submission(seeded_monthly_submissions.monthly_submission0.id) is None
+        assert await uow.challenges.get_monthly_submission(seeded_monthly_submissions.monthly_submission1.id) is None
+        assert await uow.challenges.get_monthly_submission(seeded_monthly_submissions.monthly_submission2.id) is None
+
+        # assert unrelated submissions (different thread_ids) are not affected
+        assert await uow.challenges.get_monthly_submission(seeded_monthly_submissions.monthly_submission3.id) is not None
+        assert await uow.challenges.get_monthly_submission(seeded_monthly_submissions.monthly_submission4.id) is not None
+        assert await uow.challenges.get_monthly_submission(seeded_monthly_submissions.monthly_submission5.id) is not None
+    
+
+    async def test_cleanup_partial_monthly_submissions(
+            self, uow, seeded_users, seeded_monthly_challenge, seeded_monthly_submissions
+    ):
+        #keep only submission1, rest should cascade
+        await uow.challenges.cleanup_monthly_submissions(challenge=seeded_monthly_challenge, thread_id=111, submission_ids=[seeded_monthly_submissions.monthly_submission0.id])
+        
+
+
+        assert await uow.challenges.get_monthly_submission(seeded_monthly_submissions.monthly_submission0.id) is not None
+        assert await uow.challenges.get_monthly_submission(seeded_monthly_submissions.monthly_submission1.id) is None
+        assert await uow.challenges.get_monthly_submission(seeded_monthly_submissions.monthly_submission2.id) is None
+
+
+        # assert unrelated submissions (different thread_ids) are not affected
+        assert await uow.challenges.get_monthly_submission(seeded_monthly_submissions.monthly_submission3.id) is not None
+        assert await uow.challenges.get_monthly_submission(seeded_monthly_submissions.monthly_submission4.id) is not None
+        assert await uow.challenges.get_monthly_submission(seeded_monthly_submissions.monthly_submission5.id) is not None
