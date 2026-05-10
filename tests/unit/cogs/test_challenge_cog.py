@@ -78,7 +78,6 @@ class TestChallengeCog:
         cog.services.challenge.create_or_update_monthly_challenge.assert_called()
         kwargs = cog.services.challenge.create_or_update_monthly_challenge.call_args.kwargs
         data = kwargs["data"]
-        print(f"starts at {data.starts_at}")
         assert data.title == "02_03_2026_monthly_challenge"
         assert data.id == message.id
         assert data.is_active == False
@@ -228,7 +227,7 @@ class TestChallengeCog:
         cog.services.challenge.create_or_update_monthly_challenge.assert_called()
         kwargs = cog.services.challenge.create_or_update_monthly_challenge.call_args.kwargs
         data = kwargs["data"]
-        print(f"starts at {data.starts_at}")
+        
         assert data.title == "02_03_2026_monthly_challenge"
         assert data.id == message.id
         assert data.is_active == False

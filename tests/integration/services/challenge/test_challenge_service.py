@@ -50,7 +50,6 @@ class TestChallengeService:
     ):
         challenge = await uow.challenges.get_current_monthly_challenge()
 
-        print(f"t submissions {challenge.total_submissions}")
         message = make_submission_message(author=MagicMock(id=seeded_users.submission_author1.id))
 
         await service.add_monthly_submission(message=message)

@@ -174,6 +174,9 @@ class ChallengeRepository(BaseRepository):
             submission = await session.get(MonthlySubmission, submission_id)
             if not submission:
                 return False
+            challenge = await session.get(MonthlyChallenge, submission.challenge_id)
+            if not challenge or not challenge.is_active:
+                return False
             await session.delete(submission)
             return True
 
@@ -331,8 +334,8 @@ class ChallengeRepository(BaseRepository):
             deleted_submission_result = await session.execute(select(MonthlySubmission.id).where(
                     and_(~MonthlySubmission.id.in_(submission_ids), MonthlySubmission.thread_id==thread_id, MonthlySubmission.challenge_id==challenge.id)))
             deleted_submissions = deleted_submission_result.scalars().all()
-
             if deleted_submissions:
+
                 await session.execute(delete(MonthlySubmission).where(MonthlySubmission.id.in_(deleted_submissions)))
 
   

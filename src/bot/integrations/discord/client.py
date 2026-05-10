@@ -207,3 +207,6 @@ class DcClient:
                 logger.bind(operation=operation, status=e.status).error("Discord HTTP error")
             return default
     
+
+
+   

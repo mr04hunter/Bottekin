@@ -4,6 +4,8 @@ from bot.database.models import Vote, Winner
 from bot.services.challenge import ChallengeService
 from unittest.mock import AsyncMock, MagicMock
 
+from bot.types.common import MonthlyChallengeData
+
 class TestChallengeRepository:
     @pytest.fixture
     async def service(
@@ -439,3 +441,32 @@ class TestChallengeRepository:
         assert await uow.challenges.get_monthly_submission(seeded_monthly_submissions.monthly_submission3.id) is not None
         assert await uow.challenges.get_monthly_submission(seeded_monthly_submissions.monthly_submission4.id) is not None
         assert await uow.challenges.get_monthly_submission(seeded_monthly_submissions.monthly_submission5.id) is not None
+
+
+    async def test_terminate_monthly_challenge(self, uow, seeded_monthly_challenge):
+        await uow.challenges.terminate_monthly_challenge()
+        challenge = await uow.challenges.get_current_monthly_challenge()
+        assert challenge.is_active == False
+
+    async def test_delete_monthly_submission_after_challenge_ends(self, uow, seeded_monthly_challenge, seeded_monthly_submissions):
+        await uow.challenges.terminate_monthly_challenge()
+        await uow.challenges.delete_monthly_submission(seeded_monthly_submissions.monthly_submission0.id)
+
+        submission = await uow.challenges.get_monthly_submission(seeded_monthly_submissions.monthly_submission0.id)
+
+        assert submission is not None
+
+    async def test_creating_new_monthly_challenge_deactivates_the_previous(self, uow, seeded_monthly_challenge):
+        new_challenge_data = MonthlyChallengeData(
+            id=123456789123,
+            title="new_challenge_test_title",
+            is_active=True,
+            starts_at=datetime(year=2026, month=6, day=1),
+            ends_at=datetime(year=2026, month=7, day=1)
+        )
+        await uow.challenges.create_or_update_monthly_challenge(new_challenge_data)
+
+
+        current_challenge = await uow.challenges.get_current_monthly_challenge()
+
+        assert current_challenge.id == new_challenge_data.id

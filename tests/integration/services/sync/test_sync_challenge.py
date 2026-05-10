@@ -418,25 +418,26 @@ class TestChallengeSyncService:
 
 
     async def test_sync_monthly_challenge(self, service, uow, test_config):
-        thread1 = make_thread(id=111111111, owner_id=test_config.admin_id, created_at=datetime(year=2026, month=3, day=2, tzinfo=UTC))
+        thread1 = make_thread(name = "DAY 1 (02.03.2026) TEST CHALLENGE",id=111111111, owner_id=test_config.admin_id, created_at=datetime(year=2026, month=3, day=2, tzinfo=UTC))
         thread1_starter_message = make_message(
             id=111111111, author=MagicMock(id=test_config.admin_id),
             content="DAY 1 (02.03.2026) TEST CHALLENGE")
         thread1.fetch_message = AsyncMock(return_value=thread1_starter_message)
 
-        thread2 = make_thread(id=1324234234, owner_id=test_config.admin_id, created_at=datetime(year=2026, month=3, day=3, tzinfo=UTC))
+        thread2 = make_thread(name="DAY 2 (03.03.2026) TEST CHALLENGE",id=1324234234, owner_id=test_config.admin_id, created_at=datetime(year=2026, month=3, day=3, tzinfo=UTC))
         thread2_starter_message = make_message(
             id=1324234234, author=MagicMock(id=test_config.admin_id),
             content="DAY 2 (03.03.2026) TEST CHALLENGE")
         thread2.fetch_message = AsyncMock(return_value=thread2_starter_message)
 
-        thread3 = make_thread(id=13131345345313, owner_id=test_config.admin_id, created_at=datetime(year=2026, month=3, day=4, tzinfo=UTC))
+        thread3 = make_thread(name = "DAY 3 (04.03.2026) TEST CHALLENGE", id=13131345345313, owner_id=test_config.admin_id, created_at=datetime(year=2026, month=3, day=4, tzinfo=UTC))
         thread3_starter_message = make_message(
             id=13131345345313, author=MagicMock(id=test_config.admin_id),
             content="DAY 3 (04.03.2026) TEST CHALLENGE")
         thread3.fetch_message = AsyncMock(return_value=thread3_starter_message)
 
-        thread4 = make_thread(id=35345345, owner_id=test_config.admin_id, created_at=datetime(year=2026, month=3, day=5))
+        thread4 = make_thread(name = "DAY 4 (04.03.2026) TEST CHALLENGE",id=35345345, owner_id=test_config.admin_id, created_at=datetime(year=2026, month=3, day=5))
+
         thread4_starter_message = make_message(
             id=35345345, author=MagicMock(id=test_config.admin_id, created_at=datetime(year=2026, month=3, day=5, tzinfo=UTC)),
             content="DAY 4 (05.03.2026) TEST CHALLENGE")
@@ -448,8 +449,6 @@ class TestChallengeSyncService:
             id=345345634, author=MagicMock(id=test_config.admin_id),
             content="DAY 5 (06.03.2026) TEST CHALLENGE")
         thread5.fetch_message = AsyncMock(return_value=thread5_starter_message)
-
-        channel = make_text_channel(id=23432423, threads=[thread2], archived_threads=[thread1, thread3, thread4, thread5])
 
         challenge = await service.sync_monthly_challenge([thread1, thread2, thread3, thread4, thread5])
 
@@ -463,7 +462,7 @@ class TestChallengeSyncService:
     
     async def test_sync_monthly_challenge_all(self, service, seeded_monthly_challenge_data):
         service.bot.channels.monthly_challenge_channel = seeded_monthly_challenge_data.submission_channel
-
+        service.bot.guild.active_threads = AsyncMock(return_value=seeded_monthly_challenge_data.submission_channel.threads)
         await service.sync_monthly()
 
         challenge = await service.uow.challenges.get_current_monthly_challenge()
@@ -482,3 +481,70 @@ class TestChallengeSyncService:
             assert submission.edited_at == submission_message.edited_at
             assert submission.thread_id == submission_message.channel.id
             assert submission.challenge_id == seeded_monthly_challenge_data.challenge_id
+
+
+
+    async def test_sync_monthly_submissions_gets_cleaned(self, service, seeded_monthly_challenge_data, seeded_monthly_challenge, test_config):
+        thread_ids = [thread.id for thread in seeded_monthly_challenge_data.threads]
+
+        starter_thread = make_thread(
+            id=thread_ids[0], owner_id=test_config.admin_id, name="DAY 1 (01.03.2026) testchallenge", 
+            parent_id=seeded_monthly_challenge_data.submission_channel.id,created_at=datetime(year=2026, month=3, day=1, tzinfo=UTC))
+        starter_message=make_message(id=starter_thread.id, author=MagicMock(id=test_config.admin_id))
+        starter_thread.fetch_message = AsyncMock(return_value=starter_message)
+        thread2 = make_thread(
+            id=thread_ids[1], owner_id=test_config.admin_id, name="DAY 2 (02.03.2026) testchallenge", 
+            parent_id=seeded_monthly_challenge_data.submission_channel.id, created_at=datetime(year=2026, month=3, day=2, tzinfo=UTC))
+        thread3 = make_thread(
+            id=thread_ids[2], owner_id=test_config.admin_id, name="DAY 3 (02.03.2026) testchallenge", 
+            parent_id=seeded_monthly_challenge_data.submission_channel.id, created_at=datetime(year=2026, month=3, day=3, tzinfo=UTC))
+        thread4 = make_thread(
+            id=thread_ids[3], owner_id=test_config.admin_id, name="DAY 4 (02.03.2026) testchallenge", 
+            parent_id=seeded_monthly_challenge_data.submission_channel.id, created_at=datetime(year=2026, month=3, day=4, tzinfo=UTC))
+        thread5 = make_thread(
+            id=thread_ids[4], owner_id=test_config.admin_id, name="DAY 5 (02.03.2026) testchallenge",
+            parent_id=seeded_monthly_challenge_data.submission_channel.id, created_at=datetime(year=2026, month=3, day=5, tzinfo=UTC))
+
+        channel = make_text_channel(id=seeded_monthly_challenge_data.submission_channel.id, archived_threads=[starter_thread, thread2, thread3, thread4])
+
+        service.bot.channels.monthly_challenge_channel = channel
+        
+        service.bot.guild.active_threads = AsyncMock(return_value=[thread5])
+
+        await service.sync_monthly()
+
+        challenge = await service.uow.challenges.get_current_monthly_challenge()
+
+        assert challenge is not None
+        assert challenge.title == seeded_monthly_challenge_data.challenge_title
+        assert challenge.total_submissions == 0
+        assert challenge.starts_at == starter_thread.created_at
+        assert challenge.ends_at == seeded_monthly_challenge_data.ends_at
+        
+
+    async def test_sync_monthly_submissions_gets_partial_cleaned(self, service, seeded_monthly_challenge_data, seeded_monthly_challenge, test_config):
+        thread_ids = [thread.id for thread in seeded_monthly_challenge_data.threads]
+
+
+        channel = seeded_monthly_challenge_data.submission_channel
+
+        cleaned_submission_count = len(channel.threads[0].messages)
+        submission_count_after_partial_delete = len(seeded_monthly_challenge_data.submission_messages) - cleaned_submission_count
+
+
+        service.bot.channels.monthly_challenge_channel = channel
+        
+        service.bot.guild.active_threads = AsyncMock(return_value=[make_thread(
+            name="DAY 2 (02.03.2026) testchallenge", id=channel.threads[0].id, owner_id=test_config.admin_id, parent_id=channel.id, created_at=channel.threads[0].created_at)])
+
+        await service.sync_monthly()
+
+        challenge = await service.uow.challenges.get_current_monthly_challenge()
+        
+        assert challenge is not None
+        assert challenge.title == seeded_monthly_challenge_data.challenge_title
+        assert challenge.total_submissions != 0
+        assert challenge.total_submissions == submission_count_after_partial_delete
+        assert challenge.starts_at == seeded_monthly_challenge_data.starts_at
+        assert challenge.ends_at == seeded_monthly_challenge_data.ends_at
+

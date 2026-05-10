@@ -17,7 +17,6 @@ class ChallengeValidator:
 
     def validate(self, message: Message, challenge: Challenge | MonthlyChallenge) -> bool:
         if isinstance(challenge, Challenge):
-            print("AAAAAAAAAAAAA")
             if challenge.type == "community" and message.channel.id == self.config.official_submission_channel_id:
                 logger.debug(f"Ongoing challenge is community challenge, received submission is in official challenges channel")
                 return False

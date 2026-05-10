@@ -63,16 +63,17 @@ class ChallengeSync(BaseService):
     
 
     async def sync_monthly(self):
+        logger.debug(f"MONTHLY CHALLENGE SYNC STARTED")
         existing_user_ids = await self.uow.users.get_all_ids()
         monthly_challenge_channel = self.bot.channels.monthly_challenge_channel
+
         threads = await self._get_all_threads(channel=monthly_challenge_channel)
-        print(f"THREADS {threads}")
         monthly_challenge = await self.sync_monthly_challenge(threads=threads)
-        print(f"CHAL { monthly_challenge}")
         if not monthly_challenge:
             return
         
         for thread in threads:
+            logger.debug(f"MONTHLY SYNC THREAD {thread.id}")
             await self._sync_monthly_challenge_thread(challenge=monthly_challenge, thread=thread, existing_user_ids=existing_user_ids)
             await asyncio.sleep(0.5)
 
@@ -82,11 +83,16 @@ class ChallengeSync(BaseService):
         self, 
         channel: ForumChannel) -> list[Thread]:
 
-        open_threads = list(channel.threads)
+        active_threads = await self.bot.client.safe_discord_call(coro=lambda: self.bot.guild.active_threads(), operation="monthly_challenges active threads")
+
+        if not active_threads:
+            return []
+
+        active_threads = [thread for thread in active_threads if thread.parent_id==channel.id]
 
         archived_threads = await self.bot.client.safe_fetch_threads(channel=channel, operation="monthly_challenge_sync fetch_all_threads", default=[])
 
-        threads = open_threads+archived_threads
+        threads = active_threads+archived_threads
         threads = [thread for thread in threads if thread.id != self.config.monthly_challenge_info_thread_id]
 
         
@@ -110,18 +116,21 @@ class ChallengeSync(BaseService):
             coro=lambda t=threads[0]: t.fetch_message(t.id), operation="monthly challenge sync fetch starter message")
         
         if not starter_message:
-            print("NO STARTER_MESSAGE")
+            logger.info(f"Monthly challenge starter message could not found")
             return
         
         if starter_message.author.id != self.config.admin_id:
-            print("NON ADMIN")
+            logger.bind(
+                author_id=str(starter_message.author.id)
+            ).info(f"Challenge month starter message author id is not admin id")
             return 
         
-        print(f"{starter_message.content}")
-        title_data = self.extractor.is_challenge_month_starter(starter_message.content)
+        title_data = self.extractor.is_challenge_month_starter(threads[0].name)
 
         if not title_data:
-            print("NO TITLE")
+            logger.bind(
+                content=str(threads[0].name)
+            ).info(f"No title data found for monthly challenge")
             return
         
         day, month, year = title_data
@@ -167,8 +176,6 @@ class ChallengeSync(BaseService):
                 logger.debug("No submission messages")
                 break
             
-            print(f"{c} MES IDS {[msg.id for msg in submission_messages]}")
-            c+=1
             after_date = Object(id=submission_messages[len(submission_messages)-1].id)
             for submission_message in submission_messages: 
                 if not self.validator.validate(message=submission_message, challenge=challenge):
@@ -262,11 +269,9 @@ class ChallengeSync(BaseService):
         submissions = []
         winners = set()
         after_date = challenge.starts_at
-        c = 0
         while True:
             submission_messages = await self.bot.client.safe_fetch_messages(channel=channel, operation="sync_challenge_data", limit=100,after=after_date,before=challenge.ends_at, oldest_first=True)
             submission_messages = [message for message in submission_messages if message.author.id in existing_user_ids]
-            print(f"MES IDS {[]}")
             logger.bind(
                 after_date=after_date,
                 before_date=challenge.ends_at,

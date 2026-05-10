@@ -38,9 +38,10 @@ It runs as a containerised python service deployed on docker swarm with automate
     
 - Challenge System
     
-    Full challenge lifecycle management. Syncs challenge data in designated “challenge-info” channel from a Dyno bot embed, accepts and validates submissions, manages voting (one vote per user, self vote prevention), declares winners via trophy reaction(only admin users can declare winners by adding a trophy reaction), and updates the live leaderboards in real time.
-    
-    Extracts the challenge duration from the designated embed and starts scheduled jobs to end challenge&voting 
+    Full challenge lifecycle management. Syncs challenge data in designated “challenge-info” channel from a Dyno bot embed, accepts and validates submissions, manages voting (one vote per user, self vote prevention), declares winners via trophy reaction(only admin users can declare winners by adding a trophy reaction), and updates the live leaderboards in real time.    
+    Extracts the challenge duration from the designated embed and starts scheduled jobs to end challenge&voting
+
+  "Challenge month" concept is also implemented. Submissions made in challenge months will be added to the "total submissions" of the user.
     
 - Leaderboards
     
@@ -129,10 +130,10 @@ flowchart LR
 
 ## 5)Testing
 
-A total of **344** tests are written for the project.
+A total of **376** tests are written for the project.
 
-- **127** unit tests
-- **217** integration test.
+- **138** unit tests
+- **238** integration test.
 
 ### Integration
 
