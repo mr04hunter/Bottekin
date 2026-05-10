@@ -111,7 +111,7 @@ class MainGroup(app_commands.Group, name="bottekin",
         rules_channel_url = cast(TextChannel, self.bot.channels.rules)
         help_view = HelpView(dev_user=dev_user, rules_channel_url=rules_channel_url.jump_url)
 
-        await interaction.response.send_message(view=help_view)
+        await interaction.response.send_message(view=help_view, ephemeral=True)
 
 
 
