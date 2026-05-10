@@ -155,6 +155,9 @@ class ChallengeSync(BaseService):
         
         monthly_challenge = await self.uow.challenges.create_or_update_monthly_challenge(data=challenge_data)
 
+        if is_active:
+            await self.scheduler.schedule_monthly_challenge_jobs(ends_at=challenge_data.ends_at)
+
         return monthly_challenge
 
 
