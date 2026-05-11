@@ -1,4 +1,4 @@
-from discord import TextChannel
+from discord import TextChannel, Thread
 from bot.database.models import User
 from bot.database.unit_of_work import UnitOfWork
 from bot.events.event import UPDATE_CURRENT_CHALLENGE_LEADERBOARD, UPDATE_SUBMISSIONS_LEADERBOARD, UPDATE_WINNERS_LEADERBOARD, UPDATE_FEEDBACK_LEADERBOARD
@@ -130,7 +130,7 @@ class UserService(BaseService):
         for notif_message in notif_messages:
             channel = await self.bot.client.safe_discord_call(coro=lambda msg=notif_message:self.bot.guild.fetch_channel(msg.channel_id), operation="get_thread_of_user_left_notification_message")
 
-            if not isinstance(channel, TextChannel):
+            if not isinstance(channel, Thread):
                 logger.bind(
                     channel_id=str(notif_message.channel_id)
                 ).warning(f"Channel not found for user left notification")
