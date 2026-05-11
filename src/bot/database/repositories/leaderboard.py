@@ -1,6 +1,6 @@
 from datetime import datetime
 from sqlalchemy import select, desc, distinct, union_all, literal
-from bot.database.models import Track, Vote, Submission, User, Challenge, Leaderboards, Feedback
+from bot.database.models import MonthlyChallenge, Track, Vote, Submission, User, Challenge, Leaderboards, Feedback
 from bot.database.repositories.base import BaseRepository
 from bot.logging import get_logger, log_function
 from sqlalchemy.orm import selectinload
@@ -58,7 +58,13 @@ class LeaderboardRepository(BaseRepository):
                                            )
                                            .group_by(User.id).order_by(desc(User.total_submissions)).limit(10))
             
-            total_challenges= await session.execute(select(func.count(Challenge.id)))
+            total_official_challenges=await session.execute(select(func.count(Challenge.id)))
+            total_official_challenges_result = cast(int,total_official_challenges.scalar())
+            total_monthly_challenges=await session.execute(select(func.count(MonthlyChallenge.id)))
+            total_monthly_challenges_result = cast(int,total_monthly_challenges.scalar())
+
+            total_challenges = total_official_challenges_result+total_monthly_challenges_result
+
             total_submissions = await session.execute(select(func.coalesce(func.sum(User.total_submissions), 0)))
             leaderboard = [(user,user.total_submissions) for user in result.scalars().all() if user.total_submissions > 0]
 
@@ -67,7 +73,7 @@ class LeaderboardRepository(BaseRepository):
             ).debug("Feedback leaderboard debug")
 
             leaderboard_data = SubmissionLeaderboardData(data=leaderboard, leaderboard_length=len(leaderboard),
-                                                         server_total_submissions=cast(int,total_submissions.scalar()), server_total_challenges=cast(int,total_challenges.scalar()))
+                                                         server_total_submissions=cast(int,total_submissions.scalar()), server_total_challenges=total_challenges)
 
             return leaderboard_data
 
