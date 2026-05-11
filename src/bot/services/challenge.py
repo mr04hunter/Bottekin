@@ -64,6 +64,8 @@ class ChallengeService(BaseService):
             "edited_at":message.edited_at,
             "author_id":message.author.id
         })
+
+        await self._safe_emit(UPDATE_SUBMISSIONS_LEADERBOARD)
         
 
 
@@ -212,5 +214,6 @@ class ChallengeService(BaseService):
     async def create_or_update_monthly_challenge(self,data: MonthlyChallengeData) -> MonthlyChallenge:
         challenge = await self.uow.challenges.create_or_update_monthly_challenge(data=data)
         await self.scheduler.schedule_monthly_challenge_jobs(ends_at=data.ends_at)
+        await self._safe_emit(UPDATE_SUBMISSIONS_LEADERBOARD)
         return challenge
 
