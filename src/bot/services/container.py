@@ -4,7 +4,7 @@ from bot.services import (
     StatsService, ChallengeService,
     LeaderboardService, RoleService,
     UserService, SyncService,
-    MakeItQuoteService, TrackNotificationService
+    RateLimiter, TrackNotificationService
 )
 
 from typing import TYPE_CHECKING
@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from bot.utils.converters import BotConverter
     from bot.config import Config
     from bot.utils.link_extractor import TrackDataExtractor
+    from redis.asyncio import Redis
 
 class ServiceContainer:
     def __init__(
@@ -30,7 +31,8 @@ class ServiceContainer:
         extractor:"MessageExtractor",
         scheduler:"Scheduler",
         converter:"BotConverter",
-        track_extractor:"TrackDataExtractor"
+        track_extractor:"TrackDataExtractor",
+        redis_client:"Redis"
         ) -> None:
         self.bot = bot
         self.uow = uow
@@ -54,7 +56,7 @@ class ServiceContainer:
         challenge_validator=self.challenge_validator,
         config=config)
 
-        self.miq = MakeItQuoteService(uow=self.uow, bot=self.bot, scheduler=scheduler)
+        self.rate_limiter = RateLimiter(uow=self.uow, bot=self.bot, scheduler=scheduler, redis_client=redis_client)
         self.track_notification_service = TrackNotificationService(uow=self.uow, bot=self.bot)
 
     
@@ -67,7 +69,8 @@ def create_service_container(
     scheduler:"Scheduler",
     converter:"BotConverter",
     config: "Config",
-    track_extractor:"TrackDataExtractor"
+    track_extractor:"TrackDataExtractor",
+    redis_client:"Redis"
     ) -> ServiceContainer:
     return ServiceContainer(
         uow=uow,bot=bot,
@@ -76,4 +79,5 @@ def create_service_container(
         extractor=extractor,
         converter=converter,
         config=config,
-        track_extractor=track_extractor)
+        track_extractor=track_extractor,
+        redis_client=redis_client)

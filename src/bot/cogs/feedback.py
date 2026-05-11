@@ -344,7 +344,7 @@ class FeedbackCog(Cog):
             track_id=track_id,
             author=user_data,
             channel_id=channel_id,
-            content=content,
+            content=content, 
             word_count=word_count
         )
         await self.services.feedback.add_feedback(data=feedback_data)

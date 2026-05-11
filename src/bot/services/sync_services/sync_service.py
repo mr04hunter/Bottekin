@@ -49,6 +49,7 @@ class SyncService(BaseService):
         if not existing_user_ids:
             return
 
+
         await self.challenge.sync()
         await self.challenge.sync_monthly()
 

@@ -79,6 +79,7 @@ services:
     image: a8hunter/discord-bot:$IMAGE_TAG
     depends_on:
       - postgres
+      - redis
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/health"]
       interval: 30s
@@ -121,6 +122,8 @@ services:
       - dc_webhook
       - spotify_api_client_id
       - spotify_api_client_secret
+      - redis_password
+      - redis_host
 
     ports:
       - 8000:8000
@@ -131,6 +134,38 @@ services:
       - monitoring
 
  
+
+  redis:
+    image: redis:7-alpine
+    command: >
+      sh -c 'redis-server
+      --requirepass "$$(cat /run/secrets/redis_password)"
+      --maxmemory 128mb
+      --maxmemory-policy volatile-ttl
+      --save "60 1"
+      --appendonly no'
+    secrets:
+      - redis_password
+    volumes:
+      - redis_data:/data
+    init: true
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $$(cat /run/secrets/redis_password) ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - monitoring
+
   alloy:
     image: grafana/alloy:v1.10.2
  
@@ -234,6 +269,7 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
 
 networks:
   monitoring:
@@ -273,4 +309,9 @@ secrets:
   spotify_api_client_secret:
     external: true
   grafana_prometheus_url:
+    external: true
+
+  redis_password:
+    external: true
+  redis_host:
     external: true

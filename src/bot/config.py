@@ -14,7 +14,7 @@ def get_word_list() -> frozenset[str]:
     env = os.getenv("ENVIRONMENT")
     path = os.getenv("WORDS_PATH", "words.txt") if env == "production" else "words.txt"
     if not os.path.exists(path):
-        return frozenset()
+        raise Exception("word list could not found")
     with open(path) as f:
         return frozenset(w.strip().lower() for w in f)
 
@@ -66,7 +66,8 @@ class Config(BaseSettings):
     tracks_no_feedback_channel_id: int = Field(default=...)
     guild_id: int = Field(default=...)
 
-
+    redis_host: str = Field(default=...)
+    redis_password: str = Field(default=...)
     dyno_id: int = Field(default=...)
     admin_id: int = Field(default=...)
     bot_id: int = Field(default=...)

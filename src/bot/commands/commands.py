@@ -38,6 +38,15 @@ class MainGroup(app_commands.Group, name="bottekin",
     @app_commands.command(name="stats", description="display the stats of a user")
     async def stats(self, interaction: Interaction[Client], member: User | None = None) -> None:
         from bot.healthcheck import bot_commands_total
+        if await self.services.rate_limiter.stats_is_limited(user_id=interaction.user.id):
+            next_available_stats_time = await self.services.rate_limiter.next_available_stats_time(user_id=interaction.user.id)
+            if not next_available_stats_time:
+                await interaction.response.send_message("You used this command too many times! Wait for a while!", ephemeral=True)
+                return
+            await interaction.response.send_message(f"You used this command too many times!\nWait until <t:{int(next_available_stats_time.timestamp())}>", ephemeral=True)
+            return
+                
+
         try:
             await interaction.response.defer(ephemeral=True)
             embeds = []
@@ -90,6 +99,7 @@ class MainGroup(app_commands.Group, name="bottekin",
 
 
                 await interaction.followup.send(content=title,embeds=cast(Sequence,embeds), ephemeral=True)
+                await self.services.rate_limiter.stats_increment_usage(user_id=interaction.user.id)
                 bot_commands_total.labels(command_name="stats", status="success").inc()
 
         except app_commands.TransformerError as e:
@@ -137,8 +147,8 @@ class CommandsCog(Cog):
     @log_slash_command
     async def make_it_quote(self, interaction: Interaction, message: Message) -> None:
         try:
-            if self.services.miq.is_limited(user_id=interaction.user.id):
-                next_available_miq_time = self.scheduler.next_available_miq_time(user_id=interaction.user.id)
+            if await self.services.rate_limiter.miq_is_limited(user_id=interaction.user.id):
+                next_available_miq_time = await self.services.rate_limiter.next_available_miq_time(user_id=interaction.user.id)
                 if not next_available_miq_time:
                     await interaction.response.send_message("You cannot make more quotes!")
                     return
@@ -163,7 +173,7 @@ class CommandsCog(Cog):
             if not follow_up_message:
                 return
             await interaction.delete_original_response()
-            self.services.miq.increment_usage(user_id=interaction.user.id)
+            await self.services.rate_limiter.miq_increment_usage(user_id=interaction.user.id)
         except Exception as e:
             logger.bind(
                 error=str(e) 

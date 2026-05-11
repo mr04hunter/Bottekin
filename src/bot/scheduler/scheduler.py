@@ -11,7 +11,7 @@ from bot.constants import (challenge_update_data_job_id,
                         end_monthly_challenge_job_id) 
 
 if TYPE_CHECKING:
-    from bot.services.make_it_quote_service import MakeItQuoteService
+    from bot.services.rate_limiter import RateLimiter
     from bot.services.leaderboard import LeaderboardService
     from bot.database.unit_of_work import UnitOfWork
 
@@ -44,7 +44,7 @@ class Scheduler(AsyncIOScheduler):
             scheduled_run_time=str(event.scheduled_run_time),
         ).warning(f"Scheduled job '{event.job_id}' missed its execution window")
 
-    def add_reset_miq_usage(self, user_id: int, service: "MakeItQuoteService") -> None:
+    def add_reset_miq_usage(self, user_id: int, service: "RateLimiter") -> None:
         if not self.get_job(self.miq_reset_usage_job_id_temp + f"{user_id}"):
             date = datetime.now(tz=UTC) + timedelta(days=1)
             self.add_job(
@@ -63,7 +63,7 @@ class Scheduler(AsyncIOScheduler):
         return job.next_run_time
 
 
-    def add_miq_rate_limit_job(self, user_id: int, service:"MakeItQuoteService") -> None:
+    def add_miq_rate_limit_job(self, user_id: int, service:"RateLimiter") -> None:
         if self.get_job(self.miq_reset_usage_job_id_temp + f"{user_id}"):
             self.remove_job(self.miq_reset_usage_job_id_temp + f"{user_id}")
         date = datetime.now(tz=UTC) + timedelta(days=1)

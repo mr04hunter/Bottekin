@@ -143,8 +143,11 @@ class FeedbackSyncService(BaseService):
                     })
 
                 if len(feedbacks) >= 100:
+                    feedback_ids_in_batch = [feedback["id"] for feedback in feedbacks]
+                    author_ids_in_batch = [feedback["author_id"] for feedback in feedbacks]
                     logger.debug("bulk inserting feedbacks")
                     async with self.uow.transaction() as t:
+                        await t.feedback.bulk_delete_with_author_threads(feedback_ids=feedback_ids_in_batch, author_ids=author_ids_in_batch, thread_id=thread.id)
                         await t.feedback.bulk_insert_feedback(feedbacks=feedbacks)
                         if feedback_track_data:
                             await t.feedback.bulk_update_relations(feedback_track_data=feedback_track_data)
@@ -156,12 +159,15 @@ class FeedbackSyncService(BaseService):
             logger.bind(thread_id=str(thread.id)).debug("Thread sync completed")
             if messages:
                 after_date = Object(id=messages[len(messages)-1].id)
-
+                
         
 
         if feedbacks:
+            feedback_ids_in_batch = [feedback["id"] for feedback in feedbacks]
+            author_ids_in_batch = [feedback["author_id"] for feedback in feedbacks]
             logger.debug("Adding remaining feedbacks")
             async with self.uow.transaction() as t:
+                await t.feedback.bulk_delete_with_author_threads(feedback_ids=feedback_ids_in_batch, author_ids=author_ids_in_batch, thread_id=thread.id)
                 await t.feedback.bulk_insert_feedback(feedbacks=feedbacks)
                 if feedback_track_data:
                     await t.feedback.bulk_update_relations(feedback_track_data=feedback_track_data)

@@ -1,11 +1,11 @@
 from discord import Embed
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from bot.services.make_it_quote_service import MakeItQuoteService
+from bot.services.rate_limiter import RateLimiter
 
 
 @pytest.fixture
-def mock_services(mock_bot, mock_uow):
+def mock_services(mock_bot, mock_uow, mock_redis_client):
     services = MagicMock()
     
     stats = MagicMock()
@@ -21,9 +21,9 @@ def mock_services(mock_bot, mock_uow):
     scheduler.add_miq_rate_limit = MagicMock()
     scheduler.reset_miq_rate_limit = MagicMock()
 
-    miq = MakeItQuoteService(uow=mock_uow, bot=mock_bot, scheduler=scheduler)
+    rate_limiter = RateLimiter(redis_client=mock_redis_client,uow=mock_uow, bot=mock_bot, scheduler=scheduler)
 
-    services.miq = miq
+    services.rate_limiter = rate_limiter
     services.stats = stats
     services.user = user
 

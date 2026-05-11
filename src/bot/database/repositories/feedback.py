@@ -134,7 +134,15 @@ class FeedbackRepository(BaseRepository):
             await session.execute(stmt)
 
 
-        
+    @log_function
+    async def bulk_delete_with_author_threads(self, feedback_ids: list[int], author_ids:list[int], thread_id:int):
+        async with self.get_session() as session:
+            await session.execute(
+                delete(Feedback)
+                .where(and_(Feedback.thread_id==thread_id,
+                Feedback.author_id.in_(author_ids), Feedback.id.not_in(feedback_ids))))
+
+
     
     @log_function
     async def update_relations(self, session: AsyncSession, feedback: Feedback) -> None:
@@ -167,7 +175,7 @@ class FeedbackRepository(BaseRepository):
     async def get_total_feedbacks(self):
         async with self.get_session() as session:
             result = await session.execute(select(func.count(distinct(Feedback.id))))
-
+ 
             count = result.scalar_one()
 
             return count

@@ -8,7 +8,7 @@ from bot.logging import log_function
 from bot.utils.extract_attachment_data import MessageExtractor
 from bot.error_handler.error_handler import ErrorHandler
 from bot.error_handler import decorators
-import asyncio
+from redis.asyncio import Redis
 import uvicorn
 from alembic.config import Config 
 from alembic import command
@@ -88,6 +88,14 @@ async def main() -> None:
     from bot.bottekin import create_bot
     from bot.events.discord_events import register_events
     async with AioHttpClient() as http_client:
+        redis_client = Redis(
+            host=str(config.redis_host),
+            port=6379,
+            username="default",
+            password=str(config.redis_password),
+            decode_responses=True
+        )
+
         uow = UnitOfWork()
         scheduler = Scheduler(uow=uow)
         channels = ChannelRegistry()
@@ -107,7 +115,7 @@ async def main() -> None:
         service_container = create_service_container(
         bot=bot, uow=uow, extractor=extractor,
         event_handler=event_handler, scheduler=scheduler,
-        converter=converter, config=config, track_extractor=track_extractor)
+        converter=converter, config=config, track_extractor=track_extractor, redis_client=redis_client)
         services = service_container
         
         scheduler.add_most_active_periods_job(service=service_container.leaderboard)

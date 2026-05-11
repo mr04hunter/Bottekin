@@ -1,7 +1,7 @@
 from discord import Object
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-
+import fakeredis
 from tests.factories.discord_factories import make_guild, make_text_channel
 from tests.factories.db_factories import make_user, make_challenge, make_feedback, make_submission, make_track, make_track_with_no_feedback, make_vote, make_winner
 from bot.registry.channel_registry import ChannelRegistry
@@ -167,6 +167,12 @@ def mock_track_extractor():
 
 
     return extractor
+
+
+
+@pytest.fixture
+def mock_redis_client():
+    return fakeredis.aioredis.FakeRedis(decode_responses=True)
 
 
 @pytest.fixture

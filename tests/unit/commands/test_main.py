@@ -74,8 +74,8 @@ class TestMainCommands:
         
 
         next_available = datetime(year=2026, day=1, month=1, tzinfo=UTC)
-        commands.services.miq.is_limited = MagicMock(return_value=True)
-        commands.scheduler.next_available_miq_time = MagicMock(return_value=next_available)
+        commands.services.rate_limiter.is_limited = AsyncMock(return_value=True)
+        commands.services.rate_limiter.next_available_miq_time = AsyncMock(return_value=next_available)
 
         await commands.make_it_quote(interaction, message)
 

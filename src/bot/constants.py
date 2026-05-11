@@ -31,6 +31,14 @@ CHALLENGE_STATS_THUMBNAIL_URL = BASE_IMAGE_URL+"challenge.png"
 GENERIC_LEADERBOARD_THUMBNAIL_URL = BASE_IMAGE_URL+"challenge_win.png"
 ALL_TIME_CHALLENGES_LEADERBOARD_THUMBNAIL_URL = BASE_IMAGE_URL+"challenge_win.png"
 
+
+MIQ_RATE_LIMIT_USAGE="miq:usage:"
+STATS_RATE_LIMIT_USAGE="stats:usage:"
+
+MIQ_RATE_LIMIT_LIMITED = "miq:limited:"
+STATS_RATE_LIMIT_LIMITED = "stats:limited:"
+
+
 get_winners_job_id = "get_winners_job_id"
 challenge_update_data_job_id = "update_challenge_data_id"
 get_last_challenge_job_id = "get_last_challenge_job_id"

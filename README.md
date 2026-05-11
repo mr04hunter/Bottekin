@@ -68,7 +68,12 @@ It runs as a containerised python service deployed on docker swarm with automate
     A context menu command that can be used by right clicking on any message>Apps>BotTekin>make_it_quote. This command turns any discord message to a  quote image using pillow, (python image processing library). This command includes rate limiting (5 uses/day per user via apscheduler), a delete button for the original author, and a visual card layout with avatar overlay.
     
     Only the original author or the caller user can use the delete button.
-    
+  
+- Rate limiter
+  
+  Persistant rate limiter with redis, stats command and make_it_quote commands are limited. Bot records the total usage of each user and stores it in redis cache. If a user tries to use a command while being rate limited, not sends a message with the
+  next available date for the user. 
+
 - Infrastructure
     - Health check and metrics
         
@@ -130,9 +135,9 @@ flowchart LR
 
 ## 5)Testing
 
-A total of **376** tests are written for the project.
+A total of **387** tests are written for the project.
 
-- **138** unit tests
+- **149** unit tests
 - **238** integration test.
 
 ### Integration
