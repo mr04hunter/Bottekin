@@ -346,6 +346,7 @@ class MonthlySubmission(Base):
 
 
     __table_args__ = (
+        UniqueConstraint("challenge_id", "author_id", "thread_id"),
         Index("idx_challenge_id_thread_id_submission_id", "challenge_id", "thread_id", "id"),
        
     )

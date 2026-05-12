@@ -160,9 +160,10 @@ class ChallengeRepository(BaseRepository):
     async def create_or_update_monthly_submission(self, data:dict) -> MonthlySubmission | None:
         """Creates and returns a monthly submission"""
         async with self.get_session() as session:
+
             stmt = insert(MonthlySubmission).values(**data)
             stmt = stmt.on_conflict_do_update(
-                index_elements=["id"], set_={"title": stmt.excluded.title, "edited_at":stmt.excluded.edited_at}
+                index_elements=["challenge_id", "author_id", "thread_id"], set_={"id":stmt.excluded.id, "title": stmt.excluded.title, "edited_at":stmt.excluded.edited_at}
             ).returning(MonthlySubmission)
             result = await session.execute(stmt)
             return result.scalar_one_or_none()
@@ -266,8 +267,8 @@ class ChallengeRepository(BaseRepository):
         async with self.get_session() as session:
             stmt = insert(MonthlySubmission).values(submissions)
             stmt = stmt.on_conflict_do_update(
-                index_elements=["id"],
-                set_={"title": stmt.excluded.title, "edited_at": stmt.excluded.edited_at}
+                index_elements=["challenge_id", "author_id", "thread_id"],
+                set_={"id":stmt.excluded.id, "title": stmt.excluded.title, "edited_at": stmt.excluded.edited_at}
             ).returning(MonthlySubmission)
             result = await session.execute(stmt)
 

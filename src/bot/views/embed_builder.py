@@ -3,7 +3,13 @@ from discord import Embed, Member, Colour
 from discord import User as dc_user
 from bot.database.models import Submission, User
 import math
-from bot.constants import MUSIC_STATS_THUMBNAIL_URL, FEEDBACK_STATS_THUMBNAIL_URL, CHALLENGE_STATS_THUMBNAIL_URL,GENERIC_LEADERBOARD_THUMBNAIL_URL
+from bot.constants import (MUSIC_STATS_THUMBNAIL_URL,
+                        FEEDBACK_STATS_THUMBNAIL_URL, 
+                        CHALLENGE_STATS_THUMBNAIL_URL,
+                        GENERIC_LEADERBOARD_THUMBNAIL_URL,
+                        ALL_TIME_CHALLENGES_LEADERBOARD_THUMBNAIL_URL,
+                        SUBMISSIONS_LEADERBOARD_THUMBNAIL_URL,
+                        FEEDBACK_LEADERBOARD_THUMBNAIL_URL)
 from bot.logging import get_logger
 
 from datetime import timedelta
@@ -307,7 +313,7 @@ class EmbedBuilder:
         leaderboard_embed = self._create_leaderboard_base(title=title, description=description, 
                                                           leaderboard_data=leaderboard_data,entry_callback=data_entries)
         
-        leaderboard_embed.set_thumbnail(url=GENERIC_LEADERBOARD_THUMBNAIL_URL)
+        leaderboard_embed.set_thumbnail(url=ALL_TIME_CHALLENGES_LEADERBOARD_THUMBNAIL_URL)
 
  
         return leaderboard_embed
@@ -333,7 +339,7 @@ class EmbedBuilder:
         leaderboard_embed = self._create_leaderboard_base(title=title, description=description, 
                                                           leaderboard_data=leaderboard_data, entry_callback=data_entries)        
 
-        leaderboard_embed.set_thumbnail(url=GENERIC_LEADERBOARD_THUMBNAIL_URL)
+        leaderboard_embed.set_thumbnail(url=SUBMISSIONS_LEADERBOARD_THUMBNAIL_URL)
 
         return leaderboard_embed
 
@@ -374,7 +380,7 @@ class EmbedBuilder:
         leaderboard_embed = self._create_leaderboard_base(title=title, description=description, 
                                                           leaderboard_data=leaderboard_data, entry_callback=data_entries)
 
-        leaderboard_embed.set_thumbnail(url=GENERIC_LEADERBOARD_THUMBNAIL_URL)
+        leaderboard_embed.set_thumbnail(url=FEEDBACK_LEADERBOARD_THUMBNAIL_URL)
 
         return leaderboard_embed
     

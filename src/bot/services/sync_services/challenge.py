@@ -163,10 +163,10 @@ class ChallengeSync(BaseService):
 
 
     async def _sync_monthly_challenge_thread(self, challenge:MonthlyChallenge, thread: Thread, existing_user_ids:set[int]):
-        submissions = []
+        submissions = {}
         all_submission_ids = set()
         after_date = None
-        c=0
+
         while True:
             submission_messages = await self.bot.client.safe_fetch_messages(channel=thread, operation="monthly_challenge_sync", limit=100, after=after_date, oldest_first=True)
             submission_messages = [message for message in submission_messages if message.author.id in existing_user_ids]
@@ -201,19 +201,19 @@ class ChallengeSync(BaseService):
                 }
 
                 all_submission_ids.add(submission_message.id)
-                submissions.append(submission_data)
+                submissions[f"{thread.id}_{submission_message.author.id}"] = submission_data
                 if len(submissions) >= 50:
                     logger.bind(
                     submissions=[str(submission) for submission in submissions]
                     ).debug("Bulk inserting monthly submissions")
 
-                    await self.uow.challenges.bulk_insert_monthly_submissions(submissions=submissions)
+                    await self.uow.challenges.bulk_insert_monthly_submissions(submissions=[sbm for sbm in submissions.values()])
                     submissions.clear()
 
         
         if submissions:
             logger.debug("Bulk inserting remaining monthly submissions")
-            await self.uow.challenges.bulk_insert_monthly_submissions(submissions=submissions)
+            await self.uow.challenges.bulk_insert_monthly_submissions(submissions=[sbm for sbm in submissions.values()])
 
         await self.uow.challenges.cleanup_monthly_submissions(challenge=challenge, thread_id=thread.id, submission_ids=list(all_submission_ids))
 
