@@ -60,7 +60,7 @@ class ChallengeValidator:
                 content_type=str(content_type),
                 message=str(message)
             ).info("Validated Submission")
-            return False
+            return True
         
 
         return False    
