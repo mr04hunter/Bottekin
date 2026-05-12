@@ -172,7 +172,7 @@ class MessageExtractor:
                     track_message=str(message)
                 ).warning(f"Attachment not found on message")
                 return
-            if not attachments[0].content_type == ["audio/mpeg", "audio/wav"]:
+            if not attachments[0].content_type not in ["audio/mpeg", "audio/wav"]:
                 logger.warning(f"Invalid content type {message.id}")
                 return
             logger.bind(
