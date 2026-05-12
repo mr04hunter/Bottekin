@@ -50,7 +50,17 @@ class ChallengeValidator:
 
         
         attachments = message.attachments
-        if attachments and attachments[0].content_type in ["audio/mpeg", "audio/wav"]:
-            return True
+
+        content_type = attachments[0].content_type
+        if not content_type:
+            content_type = "audio" if attachments[0].filename.lower().endswith(".wav") or attachments[0].filename.lower().endswith(".mp3") else "invalid"
+
+        if content_type.lower().startswith("audio"):
+            logger.bind(
+                content_type=str(content_type),
+                message=str(message)
+            ).info("Validated Submission")
+            return False
+        
 
         return False    
