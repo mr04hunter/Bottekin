@@ -50,7 +50,7 @@ class ChallengeValidator:
 
         
         attachments = message.attachments
-        if attachments and attachments[0].content_type == "audio/mpeg":
+        if attachments and attachments[0].content_type in ["audio/mpeg", "audio/wav"]:
             return True
 
         return False    

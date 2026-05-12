@@ -24,7 +24,7 @@ class AdminGroup(app_commands.Group, name="admin", description="admin commands",
         if stats not in STATS:
             await interaction.response.send_message(content="Please select a valid stat name")
             return
-        await interaction.response.defer()
+        await interaction.response.defer(ephemeral=True)
 
         await self.services.user.change_stats(user_id=user.id, field=stats, count=count)
         message = (f"User: {user.mention}\n" f"Affected stat: {stats}\n" f"{"Incremented" if count > 0 else "Decremented"} by {count}")

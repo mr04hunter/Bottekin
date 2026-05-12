@@ -289,7 +289,7 @@ class FeedbackCog(Cog):
                     message=str(message)
                 ).warning(f"[Feedback] Attachment not found on message")
                 return
-            if attachments[0].content_type != "audio/mpeg":
+            if attachments[0].content_type not in ["audio/mpeg", "audio/wav"]:
                 logger.bind(
                     message=str(message)
                 ).warning(f"[Feedback] Invalid content type on message")
