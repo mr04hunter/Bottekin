@@ -56,22 +56,22 @@ class TestUserSyncService:
 
         guild = make_guild(members=seeded_members.all)
         service.bot.guild = guild
-        reactions = make_reaction(emoji="✅", users=[seeded_members.user1, seeded_members.user2])
+        reactions = make_reaction(emoji="❌", users=[seeded_members.user1, seeded_members.user2])
 
         service.bot.channels.rules_message.reactions = [reactions]
 
         await service.update_members()
 
         user1 = await uow.users.get_by_id(seeded_members.user1.id)
-        assert user1.is_purge_data == False
+        assert user1.is_purge_data == True
 
         user2 = await uow.users.get_by_id(seeded_members.user2.id)
-        assert user2.is_purge_data == False
+        assert user2.is_purge_data == True
 
     async def test_fields_update_correctly(
             self, service, uow, seeded_members
     ):
-        reactions = make_reaction(emoji="✅", users=seeded_members.all)
+        reactions = make_reaction(emoji="❌", users=seeded_members.all)
 
         service.bot.channels.rules_message.reactions = [reactions]
 

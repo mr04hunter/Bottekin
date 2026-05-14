@@ -158,6 +158,8 @@ class FeedbackCog(Cog):
             if payload.member.id == payload.message_author_id:
                 return
             
+            
+
             channel = await self.bot.client.safe_discord_call(coro=lambda:self.bot.fetch_channel(payload.channel_id), operation="feedback_cog:reaction_add")
             if not channel:
                 logger.warning("Failed to fetch channel in feedback_cog:reaction_add_event")
@@ -170,7 +172,7 @@ class FeedbackCog(Cog):
                 ).warning("failed to fetch the reacted message, task aborted")
                 return
             
-
+    
             
 
             user_reaction_count = await self._get_user_reaction_count(user_id=payload.member.id, reactions=reacted_message.reactions)
@@ -227,10 +229,6 @@ class FeedbackCog(Cog):
         if message.author.bot:
             return
         channel = cast(TextChannel | Thread, message.channel)
-        logger.bind(
-            channel_name=str(cast(TextChannel,message.channel).name),
-            message=str(message)
-        ).info(f"[Feedback] On Message")
 
         if message.channel.id in self.config.feedback_channel_ids:
             channel = cast(TextChannel, channel)
@@ -280,7 +278,10 @@ class FeedbackCog(Cog):
                 return
             
             track_title, platform = await self.track_extractor.extract_title(url=str(urls[0]))
-            logger.debug(f"Title: {track_title} Platform: {platform}")
+            logger.bind(
+                title=str(track_title),
+                platform=str(platform)
+            ).info(f"Extracted title and platform")
 
         else:
             attachments = message.attachments
@@ -304,7 +305,7 @@ class FeedbackCog(Cog):
                 attachments=str(attachments),
                 title=str(attachments[0].title),
                 filename=str(attachments[0].filename)
-            ).debug(f"[Feedback] Attachments")
+            ).info(f"[Feedback] Attachment data")
             track_title = MessageExtractor.get_title(attachment=attachments[0])
                 
             
@@ -314,7 +315,9 @@ class FeedbackCog(Cog):
         await message.add_reaction("👍")
         logger.bind(
             channel_name=str(cast(TextChannel,message.channel).name),
-            message=str(message)
+            message=str(message),
+            track_title=str(track_title),
+            platform=str(platform)
         ).info(f"Track added")
 
 
@@ -353,6 +356,13 @@ class FeedbackCog(Cog):
             content=content, 
             word_count=word_count
         )
+        logger.bind(
+            id=str(feedback_data.id),
+            track_id=str(feedback_data.track_id),
+            author_id=str(user_data.id),
+            display_name=str(user_data.display_name),
+            channel_id=str(feedback_data.channel_id)
+        ).info("New feedbacl message")
         await self.services.feedback.add_feedback(data=feedback_data)
         await message.add_reaction("👍")
  

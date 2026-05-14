@@ -272,7 +272,7 @@ class TestChallengeCog:
 
         await cog.on_raw_reaction_add(payload=payload)
 
-        cog.services.challenge.vote.assert_not_called()
+        
         cog.services.challenge.set_chosen_winner.assert_not_called()
 
 
@@ -286,7 +286,7 @@ class TestChallengeCog:
 
         await cog.on_raw_reaction_add(payload=payload)
 
-        cog.services.challenge.vote.assert_called_once_with(submission_id=payload.message_id, voter_id=payload.user_id)
+        
         cog.services.challenge.set_chosen_winner.assert_not_called()
 
     
@@ -300,7 +300,7 @@ class TestChallengeCog:
 
         await cog.on_raw_reaction_add(payload=payload)
 
-        cog.services.challenge.vote.assert_not_called()
+        
         cog.services.challenge.set_chosen_winner.assert_called_once_with(user_id=payload.message_author_id, submission_id=payload.message_id)
 
     async def test_on_raw_reaction_unrelated_channel_returns(self, cog, test_config):
@@ -313,7 +313,7 @@ class TestChallengeCog:
 
         await cog.on_raw_reaction_add(payload=payload)
 
-        cog.services.challenge.vote.assert_not_called()
+        
         cog.services.challenge.set_chosen_winner.assert_not_called()
 
     
@@ -327,7 +327,7 @@ class TestChallengeCog:
 
         await cog.on_raw_reaction_add(payload=payload)
 
-        cog.services.challenge.vote.assert_called_once_with(submission_id=payload.message_id, voter_id=payload.user_id)
+        
         cog.services.challenge.set_chosen_winner.assert_not_called()
 
 
@@ -340,7 +340,7 @@ class TestChallengeCog:
 
         await cog.on_raw_reaction_remove(payload=payload)
 
-        cog.services.challenge.remove_vote.assert_called_once_with(submission_id=payload.message_id, voter_id=payload.user_id)
+    
         cog.services.challenge.remove_chosen_winner.assert_not_called()
 
 
@@ -356,7 +356,7 @@ class TestChallengeCog:
         cog.bot.channels.official_submission = official_submission_channel
         await cog.on_raw_reaction_remove(payload=payload)
 
-        cog.services.challenge.remove_vote.assert_not_called()
+        
         cog.services.challenge.remove_chosen_winner.assert_called_once_with(user_id=submission_message.author.id, submission_id=submission_message.id)
 
 
@@ -369,5 +369,5 @@ class TestChallengeCog:
 
         await cog.on_raw_reaction_remove(payload=payload)
 
-        cog.services.challenge.remove_vote.assert_not_called()
+       
         cog.services.challenge.remove_chosen_winner.assert_not_called()

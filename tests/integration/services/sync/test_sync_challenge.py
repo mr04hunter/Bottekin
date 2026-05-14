@@ -216,125 +216,6 @@ class TestChallengeSyncService:
             assert await uow.challenges.get_submission(message.id) is None
 
 
-    async def test_sync_votes(
-            self, service, uow, seeded_users, seeded_challenge
-    ):
-
-        voter1 = make_member(id=seeded_users.voter1.id)
-        voter2 = make_member(id=seeded_users.voter2.id)
-
-        voted_submission = seeded_challenge.submission_messages[0]
-        reaction = make_reaction(users=[voter1, voter2])
-        voted_submission.reactions = [reaction]
-
-        await service.sync_data(seeded_challenge.submission_channel, seeded_challenge.challenge, set(seeded_challenge.existing_users.all_ids+seeded_users.all_ids))
-
-        db_voted_submission = await uow.challenges.get_submission(voted_submission.id)
-
-        assert db_voted_submission.total_votes == 2
-
-    async def test_duplicate_votes(
-            self, service, uow, seeded_challenge, seeded_users
-    ):
-        voter1 = make_member(id=seeded_users.voter1.id)
-
-        voted_submission1 = seeded_challenge.submission_messages[0]
-        voted_submission2 = seeded_challenge.submission_messages[1]
-        reaction1 = make_reaction(users=[voter1])
-        reaction2 = make_reaction(users=[voter1])
-        voted_submission1.reactions = [reaction1]
-        voted_submission2.reactions = [reaction2]
-
-        await service.sync_data(seeded_challenge.submission_channel, seeded_challenge.challenge, set(seeded_challenge.existing_users.all_ids+seeded_users.all_ids))
-
-        db_voted_submission1 = await uow.challenges.get_submission(voted_submission1.id)
-        db_voted_submission2 = await uow.challenges.get_submission(voted_submission2.id)
-
-        assert db_voted_submission1.total_votes == 0
-        assert db_voted_submission2.total_votes == 1
-
-    async def test_sync_vote_gets_cleaned(
-            self, service, uow, seeded_challenge, seeded_users
-    ):
-        voter1 = make_member(id=seeded_users.voter1.id)
-
-        voted_submission1 = seeded_challenge.submission_messages[0]
-        reaction1 = make_reaction(users=[voter1])
-        voted_submission1.reactions = [reaction1]
-
-        await service.sync_data(seeded_challenge.submission_channel, seeded_challenge.challenge, set(seeded_challenge.existing_users.all_ids+seeded_users.all_ids))
-
-        voted_submission1.reactions = []
-
-        await service.sync_data(seeded_challenge.submission_channel, seeded_challenge.challenge, set(seeded_challenge.existing_users.all_ids+seeded_users.all_ids))
-
-        db_voted_submission1 = await uow.challenges.get_submission(voted_submission1.id)
-        db_voter = await uow.users.get_by_id(voter1.id)
-        assert db_voted_submission1.total_votes == 0
-        assert db_voter.times_voted == 0
-
-    async def test_sync_vote_after_challenge_ended(
-            self, service, uow, seeded_users, seeded_challenge
-    ):
-
-
-        await service.sync_data(seeded_challenge.submission_channel, seeded_challenge.challenge, set(seeded_challenge.existing_users.all_ids+seeded_users.all_ids))
-
-
-        voter1 = make_member(id=seeded_users.voter1.id)
-        voter2 = make_member(id=seeded_users.voter2.id)
-
-        voted_submission = seeded_challenge.submission_messages[0]
-        reaction = make_reaction(users=[voter1, voter2])
-        voted_submission.reactions = [reaction]
-
-        challenge = seeded_challenge.challenge
-
-        challenge.is_ongoing_voting = False
-        challenge.is_active = False
-
-        await service.sync_data(seeded_challenge.submission_channel, challenge, set(seeded_challenge.existing_users.all_ids+seeded_users.all_ids))
-
-        db_voted_submission = await uow.challenges.get_submission(voted_submission.id)
-
-        assert db_voted_submission.total_votes == 0
-
-
-    async def test_vote_to_invalid_submission(
-            self, service, uow, seeded_challenge, seeded_users
-    ):
-        invalid_submission = make_submission_message(id=12345, author=MagicMock(id=seeded_challenge.submission_messages[0].author.id))
-        voter = make_member(id=seeded_users.voter1.id)
-
-        reaction = make_reaction(users=[voter])
-        invalid_submission.reactions = [reaction]
-
-        seeded_challenge.submission_channel.messages.append(invalid_submission)
-
-        await service.sync_data(seeded_challenge.submission_channel, seeded_challenge.challenge, set(seeded_challenge.existing_users.all_ids+seeded_users.all_ids))
-
-        db_voter = await uow.users.get_by_id(voter.id)
-
-        assert db_voter.times_voted == 0
-
-    async def test_nonexistent_voter_vote_not_inserted(
-            self, service, uow, seeded_challenge
-    ):
-        
-
-        voter1 = make_member(id=123123413)
-
-        voted_submission = seeded_challenge.submission_messages[0]
-        reaction = make_reaction(users=[voter1])
-        voted_submission.reactions = [reaction]
-
-        await service.sync_data(seeded_challenge.submission_channel, seeded_challenge.challenge, seeded_challenge.existing_users.all_ids)
-
-        db_voted_submission = await uow.challenges.get_submission(voted_submission.id)
-
-        assert db_voted_submission.total_votes == 0
-
-
 
     async def test_sync_winners(
             self, service, uow, seeded_challenge, test_config
@@ -467,14 +348,16 @@ class TestChallengeSyncService:
 
         challenge = await service.uow.challenges.get_current_monthly_challenge()
 
+        total_unique_author_thread_pairs = {(msg.author.id, msg.channel.id): msg for msg in seeded_monthly_challenge_data.submission_messages}
+
         assert challenge is not None
         assert challenge.title == seeded_monthly_challenge_data.challenge_title
         assert len(seeded_monthly_challenge_data.submission_messages) != 0 
-        assert challenge.total_submissions == len(seeded_monthly_challenge_data.submission_messages)
+        assert challenge.total_submissions == len(total_unique_author_thread_pairs)
         assert challenge.starts_at == seeded_monthly_challenge_data.starts_at
         assert challenge.ends_at == seeded_monthly_challenge_data.ends_at
         
-        for submission_message in seeded_monthly_challenge_data.submission_messages:
+        for submission_message in total_unique_author_thread_pairs.values():
             submission = await service.uow.challenges.get_monthly_submission(submission_message.id)
             assert submission.title == "test_title"
             assert submission.created_at == submission_message.created_at
@@ -529,7 +412,7 @@ class TestChallengeSyncService:
         channel = seeded_monthly_challenge_data.submission_channel
 
         cleaned_submission_count = len(channel.threads[0].messages)
-        submission_count_after_partial_delete = len(seeded_monthly_challenge_data.submission_messages) - cleaned_submission_count
+        submission_count_after_partial_delete = len(seeded_monthly_challenge_data.submissions) - cleaned_submission_count
 
 
         service.bot.channels.monthly_challenge_channel = channel

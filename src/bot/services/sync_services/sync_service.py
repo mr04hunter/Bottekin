@@ -66,8 +66,7 @@ class SyncService(BaseService):
         await self._safe_emit(UPDATE_WINNERS_LEADERBOARD)
         await self._safe_emit(UPDATE_SUBMISSIONS_LEADERBOARD)
         await self._safe_emit(SET_CHALLENGE_ROLE)
-        await self._safe_emit(UPDATE_SERVER_ACTIVITIES_BOARD)
-        await self._safe_emit(UPDATE_MOST_ACTIVE_PERIODS_BOARD)
+
 
 
     async def _sync_channel(

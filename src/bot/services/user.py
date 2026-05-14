@@ -43,6 +43,11 @@ class UserService(BaseService):
                 is_purge_data=is_purge_data
                 )
             )
+    
+    async def get_user(self, user_id:int) -> User | None:
+        user = await self.uow.users.get_by_id(user_id=user_id)
+        return user
+
         
     async def delete_user(self, user_id: int) -> None:
         

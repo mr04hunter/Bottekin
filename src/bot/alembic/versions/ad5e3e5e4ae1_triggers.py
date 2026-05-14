@@ -1,8 +1,8 @@
 """triggers
 
-Revision ID: 7ccb4b8c807d
-Revises: 96ba836a9c8e
-Create Date: 2026-05-11 13:24:18.177191
+Revision ID: ad5e3e5e4ae1
+Revises: cb07658dedf4
+Create Date: 2026-05-14 16:39:10.239966
 
 """
 from typing import Sequence, Union
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '7ccb4b8c807d'
-down_revision: Union[str, Sequence[str], None] = '96ba836a9c8e'
+revision: str = 'ad5e3e5e4ae1'
+down_revision: Union[str, Sequence[str], None] = 'cb07658dedf4'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

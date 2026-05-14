@@ -280,9 +280,7 @@ async def seeded_monthly_challenge(uow, seeded_monthly_challenge_data):
     )
 
     await uow.challenges.create_or_update_monthly_challenge(data=challenge_data)
-
-    submissions = [
-        {
+    submissions = {(msg.author.id, msg.channel.id):{
             "id":msg.id,
             "title":"test_title",
             "author_id":msg.author.id,
@@ -290,10 +288,11 @@ async def seeded_monthly_challenge(uow, seeded_monthly_challenge_data):
             "challenge_id":seeded_monthly_challenge_data.challenge_id,
             "created_at":msg.created_at,
             "edited_at":msg.edited_at
-        } for msg in seeded_monthly_challenge_data.submission_messages]
+        } for msg in seeded_monthly_challenge_data.submission_messages}
+
         
 
-    await uow.challenges.bulk_insert_monthly_submissions(submissions=submissions)
+    await uow.challenges.bulk_insert_monthly_submissions(submissions=submissions.values())
 
     return seeded_monthly_challenge_data
 

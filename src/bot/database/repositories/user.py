@@ -117,11 +117,10 @@ class UserRepository(BaseRepository):
                 select(User)
                 .options(
                     selectinload(User.feedbacks).selectinload(Feedback.track).selectinload(Track.author),
-                    selectinload(User.submissions).selectinload(Submission.voters),
-                    selectinload(User.votes).selectinload(Vote.submission).selectinload(Submission.author),
+                    selectinload(User.gave_feedback_to),
+                    selectinload(User.submissions),
                     selectinload(User.tracks).options(selectinload(Track.feedback_givers),selectinload(Track.feedbacks).selectinload(Feedback.author)),
                     selectinload(User.challenges_won),
-                    selectinload(User.voted_submissions),
                     selectinload(User.hosted_challenges),
                 )
                 .where(User.id == user_id)

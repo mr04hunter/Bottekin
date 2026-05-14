@@ -112,8 +112,8 @@ class StatsService(BaseService):
             logger.debug("feedback stats init")
             feedback_stats = make_feedback_stats(user)
             
-            feedback_display_data = FeedbackStatsDisplay(total_feedback_word_count=feedback_stats.total_feedback_word_count,
-                                                            total_feedbacks_given=feedback_stats.total_feedbacks_given)
+            feedback_display_data = FeedbackStatsDisplay(
+                total_feedbacks_given=feedback_stats.total_feedbacks_given, total_members_given_feedback=feedback_stats.total_feedbacked_members)
             
 
 
@@ -182,44 +182,8 @@ class StatsService(BaseService):
         challenge_stats = make_challenge_stats(stats=user)
         
         challenge_display_data = ChallengeStatsDisplay(
-                                most_voted_submissions=challenge_stats.most_voted_submissions,
-                                total_votes_received=challenge_stats.total_votes_received,
                                 total_submissions=challenge_stats.total_submissions,
-                                total_challenges_won=challenge_stats.total_challenges_won,
-                                times_voted=challenge_stats.times_voted)
-
-
-        if challenge_stats.most_votes_received_by_user:
-            
-            most_votes_received_user, most_votes_received_count = challenge_stats.most_votes_received_by_user
-
-            try:
-                dc_most_received_vote_member = await self.bot.client.safe_discord_call(coro=lambda:client.fetch_user(most_votes_received_user.id), operation="most_votes_received_y_user fetch_user")
-                if dc_most_received_vote_member:
-                    mention_val = dc_most_received_vote_member.mention
-                    
-                    challenge_display_data.most_votes_received_by_member = (mention_val, most_votes_received_count)
-
-            except discord.NotFound:
-                logger.bind(
-                    user_id=most_votes_received_user.id 
-                ).warning("Member Could not found")
-
-                challenge_display_data.most_votes_received_by_member = (most_votes_received_user.display_name, most_votes_received_count)
-
-        if challenge_stats.most_voted_user:
-            most_voted_user, most_vote_count = challenge_stats.most_voted_user
-            try:
-                dc_most_voted_member = await self.bot.client.safe_discord_call(coro=lambda:client.fetch_user(most_voted_user.id), operation="most_voted_user fetch_user")
-                if dc_most_voted_member:
-                    mention_val = dc_most_voted_member.mention
-                    challenge_display_data.most_voted_member = (mention_val, most_vote_count)
-
-            except discord.NotFound:
-                logger.bind( 
-                    user_id=most_voted_user.id
-                ).warning("Member Could not found")
-                challenge_display_data.most_voted_member = (most_voted_user.display_name, most_vote_count)
+                                total_challenges_won=challenge_stats.total_challenges_won)
 
 
 

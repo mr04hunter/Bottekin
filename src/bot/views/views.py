@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Awaitable, Callable
 from discord.ui import LayoutView, Container, TextDisplay, ActionRow, MediaGallery
 from discord import  Member, Message, MediaGalleryItem
 from discord import Interaction
@@ -71,6 +72,58 @@ class QuoteView(LayoutView):
 
 
 
+
+class DeleteUserButton(discord.ui.Button):
+    def __init__(self, user:Member,admin_id, delete_user_callback:Callable[[int],Awaitable]):
+        super().__init__(
+                label="Remove my quote",
+                style=discord.ButtonStyle.danger
+            )
+        
+        self.user = user
+        self.admin_id = admin_id
+        self.delete_user_callback = delete_user_callback
+
+
+    async def callback(self, interaction: Interaction):
+        if interaction.user.id != self.admin_id:
+            await interaction.response.send_message(
+                "You can't interact with this message.", ephemeral=True
+            )
+            return
+
+        try:
+            if interaction.message:
+                await self.delete_user_callback(self.user.id)
+                await interaction.message.delete()
+                await interaction.response.send_message(
+                    content=f"user_id: {self.user.id}\nusername: {self.user.display_name}\nUser is successfully removed from database.",
+                    delete_after=10,
+                    ephemeral=True
+                )
+        except Exception as e:
+            logger.error(f"error: {e}")
+
+
+
+class UserButtons(ActionRow):
+    def __init__(self, user: "Member", admin_id: int, delete_callback:Callable[[int], Awaitable]) -> None:
+        super().__init__()
+        self.add_item(DeleteUserButton(user=user, admin_id=admin_id, delete_user_callback=delete_callback))
+
+
+class ConfirmUserDelete(LayoutView):
+    def __init__(self, *, timeout: float | None = 180, user:"Member", admin_id:int, delete_user_callback: Callable[[int], Awaitable]) -> None:
+        super().__init__(timeout=timeout)
+        self.user = user
+        self.admin_id = admin_id
+        self.buttons = UserButtons(user=self.user, admin_id=self.admin_id, delete_callback=delete_user_callback)
+        self.text_display = TextDisplay(
+            content=f"# WARNING\nuser_id: {self.user.id}\ndisplay_name: {self.user.display_name}\nThis user is a member of this server.", id=1
+        )
+
+        self.add_item(self.text_display)
+        self.add_item(self.buttons)
 
 class HelpView(LayoutView):
     def __init__(self, dev_user: Member, rules_channel_url: str, timeout: int = 180) -> None:

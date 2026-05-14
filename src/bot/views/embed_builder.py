@@ -31,13 +31,13 @@ class EmbedBuilder:
   
     def _get_rank(self, index:int) -> str:
         """returns the rank emoji of user"""
-        emojis = {0:":first_place:", 1:":second_place:", 2:":third_place:"}
-        return emojis.get(index, "")
+        emojis = {0:" :first_place: ", 1:" :second_place: ", 2:" :third_place: "}
+        return emojis.get(index, " ")
     
     def _get_challenge_rank(self, index:int) -> str:
         """returns the rank of a user"""
-        emojis = {0:":first_place:", 1:":second_place:", 2:":third_place:",3:":four:",4:":five:",5:":six:",6:":seven:",7:":eight:",8:":nine:",9:":number_10:"}
-        return emojis.get(index, "")
+        emojis = {0:" :first_place: ", 1:" :second_place: ", 2:" :third_place: "}
+        return emojis.get(index, " ")
     
 
     def _get_possessive(self, display_name: str) -> str:
@@ -69,8 +69,9 @@ class EmbedBuilder:
         """returns an embed that presents the feedback stats data"""
 
         feedback_text = (f"{display_name} gave **{feedback_stats.total_feedbacks_given}** "
-        f"feedback {"message" + self._check_plural(length=feedback_stats.total_feedbacks_given)}\n"
-        f"with total of **{feedback_stats.total_feedback_word_count}** words!\n")
+        f"feedback {"message" + self._check_plural(length=feedback_stats.total_feedbacks_given)}\n")
+        if feedback_stats.total_members_given_feedback > 0:
+            feedback_text += f"{display_name} gave feedback to **{feedback_stats.total_members_given_feedback}** members."
 
         feedback_embed = Embed(color=Colour.blue(), title="**FEEDBACK STATS**",description=feedback_text)
         
@@ -194,13 +195,7 @@ class EmbedBuilder:
         if challenge_stats.total_challenges_won != 0:
             description_text += (f"{display_name} won **{challenge_stats.total_challenges_won}** "
                                  f"{"challenge" + self._check_plural(length=challenge_stats.total_challenges_won)}\n")
-        if challenge_stats.times_voted != 0:
-            description_text += (f"{display_name} voted **{challenge_stats.times_voted}** "
-                                 f"{"time" + self._check_plural(length=challenge_stats.times_voted)} for others\n")
-        if challenge_stats.total_votes_received != 0:
-            description_text += (f"Others voted for {display_name.lower()} **{challenge_stats.total_votes_received}** "
-                                 f"{"time" + self._check_plural(length=challenge_stats.total_votes_received)}\n")
-            
+
         
         challenge_embed = Embed(
             color=Colour.orange(), 
@@ -210,32 +205,6 @@ class EmbedBuilder:
         challenge_embed.set_thumbnail(url=CHALLENGE_STATS_THUMBNAIL_URL)
         
         
-        if challenge_stats.most_voted_member:
-            most_voted_member, most_vote_count = challenge_stats.most_voted_member
-            most_voted_user_field_text = (f"{display_name} voted **{most_vote_count}** "
-            f"{"time" + self._check_plural(length=most_vote_count)} for {most_voted_member}")
-
-            challenge_embed.add_field(name=f"MEMBER {display_name.upper()} VOTED FOR THE MOST", value=most_voted_user_field_text, inline=False)
-
-
-        if challenge_stats.most_votes_received_by_member:
-            most_votes_received_by_member, most_votes_received_count = challenge_stats.most_votes_received_by_member
-
-            most_votes_received_text = (f"{most_votes_received_by_member} voted for {display_name.lower()} "
-            f"**{most_votes_received_count}** "
-            f"{"time" + self._check_plural(length=most_votes_received_count)}")
-
-            challenge_embed.add_field(name=f"MEMBER WHO VOTED FOR {display_name.upper()} THE MOST", value=most_votes_received_text,inline=False)
-        
-        most_voted_submissions_text = ""
-        if challenge_stats.most_voted_submissions:
-            for submission in challenge_stats.most_voted_submissions:
-                most_voted_submissions_text += (f"{submission.title}\nTotal votes: " 
-                f"**{submission.total_votes}**{self._put_separator(length=len(challenge_stats.most_voted_submissions))}\n")
-
-        if most_voted_submissions_text:
-            most_voted_submissions_name = f"{display_name.upper()}{self._get_possessive(display_name=display_name).upper()} TOP 3 MOST VOTED SUBMISSIONS"
-            challenge_embed.add_field(name=most_voted_submissions_name,value=most_voted_submissions_text, inline=False)
 
         return challenge_embed
 
@@ -275,7 +244,7 @@ class EmbedBuilder:
         def data_entries(index: int, data: tuple[str, Submission]):
             rank = self._get_challenge_rank(index=index)
             member_name, submission = data
-            return f"\n{rank} {member_name} total votes received: **{submission.total_votes}**.\n" 
+            return f"\n{index+1}.{rank}{member_name} total votes received: **{submission.total_votes}**.\n" 
 
 
         title = f"**{leaderboard_data.challenge_title.upper() if leaderboard_data else "CURRENT CHALLENGE"} LIVE LEADERBOARD**"
@@ -302,7 +271,7 @@ class EmbedBuilder:
         def data_entries(index: int, data: tuple[str, int]):
             rank = self._get_challenge_rank(index=index)
             member_name, total_challenges_won = data
-            return f"{rank} {member_name}\nTotal wins: **{total_challenges_won}**{self._put_separator(length=leaderboard_data.leaderboard_length)}"
+            return f"{index+1}.{rank}{member_name}\nTotal wins: **{total_challenges_won}**{self._put_separator(length=leaderboard_data.leaderboard_length)}"
 
         title = "**WINNERS LEADERBOARD**"
         description=(f"**SERVER STATS**\nTotal winners: "
@@ -327,7 +296,7 @@ class EmbedBuilder:
         def data_entries(index: int, data: tuple[str, int]):
             rank = self._get_challenge_rank(index=index)
             member_name, submission_count = data
-            return  f"{rank} {member_name}\nTotal submissions: **{submission_count}**{self._put_separator(length=leaderboard_data.leaderboard_length)}"
+            return  f"{index+1}.{rank}{member_name}\nTotal submissions: **{submission_count}**{self._put_separator(length=leaderboard_data.leaderboard_length)}"
 
                 
         title = "**MOST ACTIVE CHALLENGERS**" 
@@ -362,7 +331,7 @@ class EmbedBuilder:
             total_feedbacked_authors_text = (f"Gave feedback to **{total_feedbacked_authors}** {"member" + self._check_plural(length=total_feedbacked_authors)}" 
                                              if total_feedbacked_authors > 0 else "") 
 
-            return (f"{rank} {member_name}\n{total_feedback_text+total_fb_words_text+total_feedbacked_authors_text}"
+            return (f"{index+1}.{rank}{member_name}\n{total_feedback_text+total_fb_words_text+total_feedbacked_authors_text}"
                     f"{self._put_separator(leaderboard_data.leaderboard_length)}")
 
                 

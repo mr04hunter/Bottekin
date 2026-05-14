@@ -8,7 +8,7 @@ from tests.factories.discord_factories import make_member, make_text_channel
 class TestAdminCommands:
     @pytest.fixture
     async def commands(self, mock_bot, mock_services, test_config):
-        return AdminCommandCog(bot=mock_bot, services=mock_services)
+        return AdminCommandCog(bot=mock_bot, services=mock_services, config=test_config)
     
 
     async def test_change_stats(self, commands):

@@ -13,41 +13,7 @@ logger = get_logger("leaderboard_repository")
 class LeaderboardRepository(BaseRepository):
 
 
-    @log_function
-    async def get_challenge_leaderboard(self, challenge: Challenge) -> ChallengeLeaderboardData | None:
-        """Get leaderboard for a challenge"""
-        async with self.get_session() as session:
-            # if not challenge:
-            #     return
-            # if not challenge.is_ongoing_voting:
-            #     return
-            result = await session.execute(
-                select(Submission, User)
-                .join(User, Submission.author_id == User.id)
-                .outerjoin(Vote, 
-                    (Vote.submission_id == Submission.id) 
-                )
-                .where(Submission.challenge_id == challenge.id)
-                .group_by(Submission.id, User.id)
-                .order_by(Submission.total_votes.desc())
-                .limit(10)
-                
-            )
-            
-            leaderboard = []
-            for submission, user in result:
-                logger.bind(
-                    submission=str(submission),
-                    ser=str(user),
-                    vote=str(submission.total_votes)
-                ).debug("Vote count")
-                leaderboard.append((user,submission))
-            
-            leaderboard_data = ChallengeLeaderboardData(data=leaderboard, challenge_title=challenge.title,
-                                                         server_total_submissions=challenge.total_submissions,
-                                                         server_total_votes=challenge.total_votes, leaderboard_length=len(leaderboard))
-            
-            return leaderboard_data
+    
 
 
     async def get_submissions_leaderboard(self) -> SubmissionLeaderboardData:

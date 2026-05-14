@@ -77,18 +77,6 @@ class Scheduler(AsyncIOScheduler):
             self.start()
 
 
-    def add_most_active_periods_job(self, service:"LeaderboardService") -> None:
-        if self.get_job(job_id=update_most_active_periods_job_id):
-            return
-        
-        self.add_job(
-            service.create_most_active_dates_board,
-            trigger=IntervalTrigger(hours=24, timezone=UTC),
-            coalesce=True, timezone=UTC, max_instances=1,
-            id=update_most_active_periods_job_id)
-        
-        if not self.running:
-            self.start()
         
 
 

@@ -32,11 +32,11 @@ def register_events(bot: "Bottekin", services:"ServiceContainer", config:"Config
     async def on_raw_reaction_add(payload: RawReactionActionEvent) -> None:
         if not payload.message_id == config.rules_message_id:
             return
-        if not str(payload.emoji) == "✅":
+        if not str(payload.emoji) == "❌":
             return
         try:
             if payload.member:
-                await services.user.set_purge_data(user_id=payload.user_id, purge=False)
+                await services.user.set_purge_data(user_id=payload.user_id, purge=True)
         except Exception as e:
             logger.bind(
                 error=str(e),
@@ -48,11 +48,11 @@ def register_events(bot: "Bottekin", services:"ServiceContainer", config:"Config
     async def on_raw_reaction_remove(payload: RawReactionActionEvent) -> None:
         if not payload.message_id == config.rules_message_id:
             return
-        if not str(payload.emoji) == "✅":
+        if not str(payload.emoji) == "❌":
             return
         try:
             if payload.user_id:
-                await services.user.set_purge_data(user_id=payload.user_id, purge=True)
+                await services.user.set_purge_data(user_id=payload.user_id, purge=False)
         except Exception as e:
             logger.bind(
                 error=str(e),
@@ -111,10 +111,10 @@ def register_events(bot: "Bottekin", services:"ServiceContainer", config:"Config
     @log_function
     @bot.event
     async def on_member_join(member: Member) -> None:
-        reacted_users = {user.id for reaction in bot.channels.rules_message.reactions if str(reaction.emoji) == "✅" async for user in reaction.users()}
+        reacted_users = {user.id for reaction in bot.channels.rules_message.reactions if str(reaction.emoji) == "❌" async for user in reaction.users()}
         try:
             if not member.bot:
-                await services.user.create_user(user_id=member.id, username=str(member), display_name=member.display_name, is_purge_data=not member.id in reacted_users)
+                await services.user.create_user(user_id=member.id, username=str(member), display_name=member.display_name, is_purge_data=member.id in reacted_users)
                 await services.user.clean_user_left_messages(user_id=member.id)
         except Exception as e:
             logger.bind(

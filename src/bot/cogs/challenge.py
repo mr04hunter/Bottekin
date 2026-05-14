@@ -1,6 +1,6 @@
 from discord.ext.commands import Cog
 import discord
-from discord import MessageType, RawMessageUpdateEvent, RawMessageDeleteEvent, RawReactionActionEvent, Message, Thread
+from discord import MessageType, RawMessageUpdateEvent, RawMessageDeleteEvent, RawReactionActionEvent, Message, TextChannel, Thread
 from bot.logging.decorators import  log_function
 from typing import TYPE_CHECKING
 from bot.logging import get_logger
@@ -51,8 +51,18 @@ class ChallengeCog(Cog):
     @cog_event_handler
     @log_function
     async def on_message(self,message: discord.Message) -> None:
+        channel = message.channel
+        if isinstance(channel, TextChannel) and channel.id not in [*self.config.all_submission_channel_ids, self.config.challenge_info_channel_id] :
+            return
+        if isinstance(channel, Thread) and channel.parent_id != self.config.monthly_challenge_channel_id:
+            return
         if message.author.id == self.config.bot_id:
             return
+        
+        logger.bind(
+            message=str(message)
+
+        ).info("challenge cog | on_message")
         logger.debug(f"type{message.type}, thread {message.thread}, ch {message.channel}")
         if self._is_challenge_info_message(message=message):
             challenge_embed_data = await self.extractor.extract_embed_data(message_id=message.id, embed=message.embeds[0])
@@ -95,12 +105,21 @@ class ChallengeCog(Cog):
     @log_function
     async def on_raw_message_delete(self, payload: RawMessageDeleteEvent) -> None:
         if payload.channel_id in self.config.submission_channel_ids:
+            logger.bind(
+                message_id=str(payload.message_id),
+                channel_id=str(payload.channel_id)
+            ).info("challenge cog | official submission delete")
             await self.services.challenge.delete_submission(payload.message_id)
+            return
 
         channel = await self.bot.client.safe_discord_call(
             coro=lambda: self.bot.guild.fetch_channel(payload.channel_id), operation="monthly_challenge: on_message delete fetch_channel")
         
         if isinstance(channel, Thread) and channel.parent_id == self.config.monthly_challenge_channel_id:
+            logger.bind(
+                message_id=str(payload.message_id),
+                channel_id=str(payload.channel_id)
+            ).info("challenge cog | monthly submission delete")
             await self.services.challenge.delete_monthly_submission(payload.message_id)
 
     @Cog.listener()
@@ -108,6 +127,11 @@ class ChallengeCog(Cog):
     @log_function
     async def on_raw_message_edit(self, payload: RawMessageUpdateEvent) -> None:
         if payload.channel_id == self.config.challenge_info_channel_id and payload.message.author.id == self.config.dyno_id and payload.message.embeds:
+            logger.bind(
+                message_id=str(payload.message_id),
+                message=str(payload.message),
+                data=str(payload.data)
+            ).info("on_raw_message_edit")
             data = await self.extractor.extract_embed_data(
                 message_id=payload.message_id, embed=payload.message.embeds[0])
             if not data:
@@ -159,28 +183,16 @@ class ChallengeCog(Cog):
 
         if not payload.channel_id in self.config.submission_channel_ids:
             return
-
-        if payload.user_id == payload.message_author_id and str(payload.emoji) in VOTE_EMOJIS:
-            logger.bind(
-            voter_id=payload.user_id,
-            author_id=payload.message_author_id
-            ).debug("Author voted for themselves")
-
-            return
+ 
         
         logger.bind(
-        channel_id=payload.channel_id,
-        message_author_id=payload.message_author_id
-        ).debug("vote reaction action payload data")
+        channel_id=str(payload.channel_id),
+        emoji=str(payload.emoji),
+        message_author_id=str(payload.message_author_id)
+        ).info("vote reaction action payload data")
         
 
-
-        if payload.message_author_id and str(payload.emoji) in VOTE_EMOJIS:
-            await self.services.challenge.vote(
-                submission_id=payload.message_id,
-                voter_id=payload.user_id)
-
-        elif payload.message_author_id and payload.user_id == self.config.admin_id and str(payload.emoji) in WIN_EMOJIS:
+        if payload.message_author_id and payload.user_id == self.config.admin_id and str(payload.emoji) in WIN_EMOJIS:
             logger.bind(
             submission_author_id=payload.message_author_id,
             emoji=str(payload.emoji)
@@ -194,9 +206,10 @@ class ChallengeCog(Cog):
     @log_function
     async def on_raw_reaction_remove(self, payload:RawReactionActionEvent) -> None:
         if payload.channel_id in self.config.submission_channel_ids:
-            if str(payload.emoji) in VOTE_EMOJIS:
-                await self.services.challenge.remove_vote(submission_id=payload.message_id, voter_id=payload.user_id)
-
+            logger.bind(
+                message_id=str(payload.message_id),
+                reaction_user_id=str(payload.user_id)
+            ).info("Challenge cog on_raw_reaction_remove")
             if str(payload.emoji) in WIN_EMOJIS and payload.user_id == self.config.admin_id:
                 channel = self.bot.channels.official_submission
                 submission_message = await self.bot.client.safe_discord_call(coro=lambda:channel.fetch_message(payload.message_id), operation="challenge_cog:reaction_remove fetch reacted_message")

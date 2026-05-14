@@ -15,98 +15,6 @@ class TestLeaderboardEmbedBuilder:
         return EmbedBuilder()
     
 
-    def test_challenge_embed(self, builder):
-        leaderboard_data = [
-            ("member1", MagicMock(total_votes=10)),
-            ("member2", MagicMock(total_votes=9)),
-            ("member3", MagicMock(total_votes=8)),
-            ("member4", MagicMock(total_votes=7)),
-            ("member5", MagicMock(total_votes=6)),
-            ("member6", MagicMock(total_votes=5)),
-            ("member7", MagicMock(total_votes=4)),
-            ("member8", MagicMock(total_votes=3)),
-            ("member9", MagicMock(total_votes=2)),
-            ("member10", MagicMock(total_votes=1))
-        ]
-        data = ChallengeLeaderboardDisplay(
-            data=leaderboard_data, #type: ignore
-            server_total_votes=45,
-            server_total_submissions=6,
-            challenge_title="test_challenge_title"
-
-        )
-
-        embed = builder.create_challenge_leaderboard_embed(leaderboard_data=data)
-
-        assert embed is not None
-
-        embed_data = embed.to_dict()
-
-        title = embed_data.get("title")
-
-        description = embed_data.get("description")
-
-        assert "TEST_CHALLENGE_TITLE" in title
-
-        assert str(data.server_total_submissions) in description
-        assert str(data.server_total_votes) in description
-
-        fields = embed_data.get("fields")
-
-
-        assert len(fields) == 1
-
-        leaderboard_field = fields[0]
-        leaderboard_val = leaderboard_field.get("value")
-
-        assert f":first_place: member1 total votes received: **10**" in leaderboard_val
-        assert f":second_place: member2 total votes received: **9**" in leaderboard_val
-        assert f":third_place: member3 total votes received: **8**" in leaderboard_val
-        assert f":four: member4 total votes received: **7**" in leaderboard_val
-        assert f":five: member5 total votes received: **6**" in leaderboard_val
-        assert f":six: member6 total votes received: **5**" in leaderboard_val
-        assert f":seven: member7 total votes received: **4**" in leaderboard_val
-        assert f":eight: member8 total votes received: **3**" in leaderboard_val
-        assert f":nine: member9 total votes received: **2**" in leaderboard_val
-        assert f":number_10: member10 total votes received: **1**" in leaderboard_val
-
-
-
-    def test_challenge_embed_empty_data(self, builder):
-        
-        data = ChallengeLeaderboardDisplay(
-            data=[], #type: ignore
-            server_total_votes=45,
-            server_total_submissions=6,
-            challenge_title="test_challenge_title"
-
-        )
-
-        embed = builder.create_challenge_leaderboard_embed(leaderboard_data=data)
-
-        assert embed is not None
-
-        embed_data = embed.to_dict()
-
-        title = embed_data.get("title")
-
-        description = embed_data.get("description")
-
-        assert "TEST_CHALLENGE_TITLE" in title
-
-        assert str(data.server_total_submissions) in description
-        assert str(data.server_total_votes) in description
-
-        fields = embed_data.get("fields")
-
-        leaderboard_field = fields[0]
-
-        leaderboard_val = leaderboard_field.get("value")
-
-        assert leaderboard_val == "\nNot enough data yet\nA leaderboard will be displayed here!"
-
-
-        
         
     def test_all_time_challenges_won_leaderboard(self, builder):
         data = [
@@ -146,16 +54,16 @@ class TestLeaderboardEmbedBuilder:
 
         leaderboard_val = leaderboard_field.get("value")
 
-        assert f":first_place: member1\nTotal wins: **10**" in leaderboard_val
-        assert f":second_place: member2\nTotal wins: **9**" in leaderboard_val
-        assert f":third_place: member3\nTotal wins: **8**" in leaderboard_val
-        assert f":four: member4\nTotal wins: **7**" in leaderboard_val
-        assert f":five: member5\nTotal wins: **6**" in leaderboard_val
-        assert f":six: member6\nTotal wins: **5**" in leaderboard_val
-        assert f":seven: member7\nTotal wins: **4**" in leaderboard_val
-        assert f":eight: member8\nTotal wins: **3**" in leaderboard_val
-        assert f":nine: member9\nTotal wins: **2**" in leaderboard_val
-        assert f":number_10: member10\nTotal wins: **1**" in leaderboard_val
+        assert f"1. :first_place: member1\nTotal wins: **10**" in leaderboard_val
+        assert f"2. :second_place: member2\nTotal wins: **9**" in leaderboard_val
+        assert f"3. :third_place: member3\nTotal wins: **8**" in leaderboard_val
+        assert f"4. member4\nTotal wins: **7**" in leaderboard_val
+        assert f"5. member5\nTotal wins: **6**" in leaderboard_val
+        assert f"6. member6\nTotal wins: **5**" in leaderboard_val
+        assert f"7. member7\nTotal wins: **4**" in leaderboard_val
+        assert f"8. member8\nTotal wins: **3**" in leaderboard_val
+        assert f"9. member9\nTotal wins: **2**" in leaderboard_val
+        assert f"10. member10\nTotal wins: **1**" in leaderboard_val
 
 
     def test_all_time_challenges_won_leaderboard_empty_data(self, builder):
@@ -230,16 +138,16 @@ class TestLeaderboardEmbedBuilder:
 
         leaderboard_val = leaderboard_field.get("value")
 
-        assert f":first_place: member1\nTotal submissions: **10**" in leaderboard_val
-        assert f":second_place: member2\nTotal submissions: **9**" in leaderboard_val
-        assert f":third_place: member3\nTotal submissions: **8**" in leaderboard_val
-        assert f":four: member4\nTotal submissions: **7**" in leaderboard_val
-        assert f":five: member5\nTotal submissions: **6**" in leaderboard_val
-        assert f":six: member6\nTotal submissions: **5**" in leaderboard_val
-        assert f":seven: member7\nTotal submissions: **4**" in leaderboard_val
-        assert f":eight: member8\nTotal submissions: **3**" in leaderboard_val
-        assert f":nine: member9\nTotal submissions: **2**" in leaderboard_val
-        assert f":number_10: member10\nTotal submissions: **1**" in leaderboard_val
+        assert f"1. :first_place: member1\nTotal submissions: **10**" in leaderboard_val
+        assert f"2. :second_place: member2\nTotal submissions: **9**" in leaderboard_val
+        assert f"3. :third_place: member3\nTotal submissions: **8**" in leaderboard_val
+        assert f"4. member4\nTotal submissions: **7**" in leaderboard_val
+        assert f"5. member5\nTotal submissions: **6**" in leaderboard_val
+        assert f"6. member6\nTotal submissions: **5**" in leaderboard_val
+        assert f"7. member7\nTotal submissions: **4**" in leaderboard_val
+        assert f"8. member8\nTotal submissions: **3**" in leaderboard_val
+        assert f"9. member9\nTotal submissions: **2**" in leaderboard_val
+        assert f"10. member10\nTotal submissions: **1**" in leaderboard_val
 
 
     def test_all_time_submissions_leaderboard_empty_data(self, builder):
@@ -364,16 +272,16 @@ class TestLeaderboardEmbedBuilder:
 
         leaderboard_val = leaderboard_field.get("value")
 
-        assert f":first_place: member1\nTotal feedback: **10**\nTotal words: **100**\nGave feedback to **10**" in leaderboard_val
-        assert f":second_place: member2\nTotal feedback: **9**\nTotal words: **99**\nGave feedback to **9**" in leaderboard_val
-        assert f":third_place: member3\nTotal feedback: **8**\nTotal words: **88**\nGave feedback to **8**" in leaderboard_val
-        assert f":four: member4\nTotal feedback: **7**\nTotal words: **77**\nGave feedback to **7**" in leaderboard_val
-        assert f":five: member5\nTotal feedback: **6**\nTotal words: **66**\nGave feedback to **6**" in leaderboard_val
-        assert f":six: member6\nTotal feedback: **5**\nTotal words: **55**\nGave feedback to **5**" in leaderboard_val
-        assert f":seven: member7\nTotal feedback: **4**\nTotal words: **44**\nGave feedback to **4**" in leaderboard_val
-        assert f":eight: member8\nTotal feedback: **3**\nTotal words: **33**\nGave feedback to **3**" in leaderboard_val
-        assert f":nine: member9\nTotal feedback: **2**\nTotal words: **22**\nGave feedback to **2**" in leaderboard_val
-        assert f":number_10: member10\nTotal feedback: **1**\nTotal words: **11**\nGave feedback to **1**" in leaderboard_val
+        assert f"1. :first_place: member1\nTotal feedback: **10**\nTotal words: **100**\nGave feedback to **10**" in leaderboard_val
+        assert f"2. :second_place: member2\nTotal feedback: **9**\nTotal words: **99**\nGave feedback to **9**" in leaderboard_val
+        assert f"3. :third_place: member3\nTotal feedback: **8**\nTotal words: **88**\nGave feedback to **8**" in leaderboard_val
+        assert f"4. member4\nTotal feedback: **7**\nTotal words: **77**\nGave feedback to **7**" in leaderboard_val
+        assert f"5. member5\nTotal feedback: **6**\nTotal words: **66**\nGave feedback to **6**" in leaderboard_val
+        assert f"6. member6\nTotal feedback: **5**\nTotal words: **55**\nGave feedback to **5**" in leaderboard_val
+        assert f"7. member7\nTotal feedback: **4**\nTotal words: **44**\nGave feedback to **4**" in leaderboard_val
+        assert f"8. member8\nTotal feedback: **3**\nTotal words: **33**\nGave feedback to **3**" in leaderboard_val
+        assert f"9. member9\nTotal feedback: **2**\nTotal words: **22**\nGave feedback to **2**" in leaderboard_val
+        assert f"10. member10\nTotal feedback: **1**\nTotal words: **11**\nGave feedback to **1**" in leaderboard_val
 
 
     def test_feedback_leaderboard_empty_data(self, builder):

@@ -142,21 +142,6 @@ class TestLeaderboardService:
 
         assert str(len(seeded_winners.all)) in sent_embed.description
 
-    async def test_current_challenge_leaderboard_sends_embed_with_real_data(
-    self, service, uow, seeded_users, seeded_challenge, seeded_submissions, seeded_votes
-    ):
-        await service.create_or_update_challenge_leaderboard()
-
-        channel = service.bot.channels.leaderboards
-        channel.send.assert_called_once()
-        
-        sent_embed = channel.send.call_args.kwargs["embed"]
-        assert sent_embed is not None
-        assert sent_embed.title == f"**{seeded_challenge.title.upper()} LIVE LEADERBOARD**"
-        
-
-        assert str(len(seeded_votes.all)) in sent_embed.description
-        assert str(len(seeded_submissions.all)) in sent_embed.description
 
     
     async def test_server_activity_board_sends_embed_with_real_data(
@@ -170,12 +155,9 @@ class TestLeaderboardService:
         tracks = await make_activity_tracks(members=seeded_users.all, channel_id=111, n=20, dates=dates)
         feedbacks = await make_activity_feedbacks(members=seeded_users.all, channel_id=111, tracks=tracks, dates=dates)
 
-        await service.server_activity_board()
+        sent_embed = await service.server_activity_board()
 
-        channel = service.bot.channels.leaderboards
-        channel.send.assert_called_once()
         
-        sent_embed = channel.send.call_args.kwargs["embed"]
         assert sent_embed is not None
         assert sent_embed.title == f"**SERVER ACTIVITY**"
         
@@ -238,12 +220,9 @@ class TestLeaderboardService:
         tracks = await make_activity_tracks(members=seeded_users.all, channel_id=111, n=20, dates=dates)
         feedbacks = await make_activity_feedbacks(members=seeded_users.all, channel_id=111, tracks=tracks, dates=dates)
 
-        await service.server_activity_board()
+        sent_embed = await service.server_activity_board()
 
-        channel = service.bot.channels.leaderboards
-        channel.send.assert_called_once()
         
-        sent_embed = channel.send.call_args.kwargs["embed"]
         assert sent_embed is not None
         assert sent_embed.title == f"**SERVER ACTIVITY**"
         

@@ -396,7 +396,8 @@ class TestChallengeRepository:
                 "thread_id":111,
                 "challenge_id":seeded_monthly_challenge.id,
                 "title":"updated_title",
-                "created_at":datetime(year=2026, month=3, day=3, tzinfo=UTC)}
+                "created_at":datetime(year=2026, month=3, day=3, tzinfo=UTC),
+                "edited_at":datetime(year=2026, month=3, day=4, tzinfo=UTC)}
 
 
         await uow.challenges.bulk_insert_monthly_submissions([updated_submission])

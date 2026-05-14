@@ -71,3 +71,17 @@ class MonthlyChallengeSyncData:
     threads: list[MagicMock]
     starts_at: datetime
     ends_at: datetime
+
+    @property
+    def submissions(self):
+        submissions = {(msg.author.id, msg.channel.id):{
+            "id":msg.id,
+            "title":"test_title",
+            "author_id":msg.author.id,
+            "thread_id":msg.channel.id,
+            "challenge_id":self.challenge_id,
+            "created_at":msg.created_at,
+            "edited_at":msg.edited_at
+        } for msg in self.submission_messages}
+
+        return submissions.values()

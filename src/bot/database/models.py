@@ -105,7 +105,7 @@ class User(Base):
     total_challenges_won: Mapped[int] = mapped_column(Integer, default=0)
 
     last_submission: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
-    is_purge_data: Mapped[bool] = mapped_column(Boolean, server_default='true')
+    is_purge_data: Mapped[bool] = mapped_column(Boolean, server_default='false')
 
     # Relationships
     feedbacks: Mapped[List["Feedback"]] = relationship(back_populates="author", order_by="Feedback.created_at.desc()", cascade="all, delete-orphan")

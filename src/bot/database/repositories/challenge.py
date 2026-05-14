@@ -265,14 +265,33 @@ class ChallengeRepository(BaseRepository):
 
     async def bulk_insert_monthly_submissions(self, submissions: list[dict]) -> list | None:
         async with self.get_session() as session:
-            stmt = insert(MonthlySubmission).values(submissions)
-            stmt = stmt.on_conflict_do_update(
-                index_elements=["challenge_id", "author_id", "thread_id"],
-                set_={"id":stmt.excluded.id, "title": stmt.excluded.title, "edited_at": stmt.excluded.edited_at}
-            ).returning(MonthlySubmission)
-            result = await session.execute(stmt)
+            updated_submissions = [submission for submission in submissions if submission.get("edited_at") is not None]
+            new_submissions = [submission for submission in submissions if submission.get("edited_at") is None]
 
-            return list(result.scalars().all())
+            added_submissions = []
+
+            if new_submissions:
+                stmt = insert(MonthlySubmission).values(new_submissions)
+                stmt = stmt.on_conflict_do_update(
+                    index_elements=["challenge_id", "author_id", "thread_id"],
+                    set_={"id":stmt.excluded.id, "title": stmt.excluded.title, "edited_at": stmt.excluded.edited_at}
+                ).returning(MonthlySubmission)
+                result = await session.execute(stmt)
+
+                added_submissions.extend(result.scalars().all())
+            
+            if updated_submissions:
+                stmt = insert(MonthlySubmission).values(updated_submissions)
+                stmt = stmt.on_conflict_do_update(
+                    index_elements=["id"],
+                    set_={"id":stmt.excluded.id, "title": stmt.excluded.title, "edited_at": stmt.excluded.edited_at}
+                ).returning(MonthlySubmission)
+                result = await session.execute(stmt)
+
+                added_submissions.extend(result.scalars().all())
+
+            return added_submissions
+
 
     async def get_vote(self, voter_id:int, challenge_id: int, submission_id: int) -> Vote | None:
         async with self.get_session() as session:

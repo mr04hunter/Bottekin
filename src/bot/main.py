@@ -75,12 +75,10 @@ def register_bot_events(event_handler:"Emitter", services:"ServiceContainer") ->
     event_handler.on(CLEANUP_TRACK_WITH_NO_FEEDBACK, callback=services.track_notification_service.cleanup_tracks_no_feedback)
     event_handler.on(DELETE_TRACK_WITH_NO_FEEDBACK, callback=services.track_notification_service.delete_track_with_no_feedback_message)
     event_handler.on(SYNC_TRACK_WITH_NO_FEEDBACK, callback=services.track_notification_service.sync_track_with_no_feedback)
-    event_handler.on(UPDATE_CURRENT_CHALLENGE_LEADERBOARD, callback=services.leaderboard.create_or_update_challenge_leaderboard)
     event_handler.on(UPDATE_FEEDBACK_LEADERBOARD, callback=services.leaderboard.create_or_update_feedback_leaderboard)
     event_handler.on(UPDATE_SUBMISSIONS_LEADERBOARD, callback=services.leaderboard.create_or_update_submission_leaderboard)
     event_handler.on(UPDATE_WINNERS_LEADERBOARD, callback=services.leaderboard.create_or_update_all_time_challenges_won_leaderboard)
-    event_handler.on(UPDATE_SERVER_ACTIVITIES_BOARD, callback=services.leaderboard.server_activity_board)
-    event_handler.on(UPDATE_MOST_ACTIVE_PERIODS_BOARD, callback=services.leaderboard.create_most_active_dates_board)
+
 
 async def main() -> None:
     init_guards()
@@ -117,15 +115,14 @@ async def main() -> None:
         event_handler=event_handler, scheduler=scheduler,
         converter=converter, config=config, track_extractor=track_extractor, redis_client=redis_client)
         services = service_container
-        
-        scheduler.add_most_active_periods_job(service=service_container.leaderboard)
+
 
         await bot.add_cog(FeedbackCog(bot=bot,services=services, config=config, track_extractor=track_extractor))
         await bot.add_cog(ChallengeCog(bot=bot,services=services, extractor=extractor, config=config))
 
         miq_gen = QuoteService(client=http_client)
         commands_cog = CommandsCog(bot=bot, miq_gen=miq_gen, services=service_container, scheduler=scheduler, config=config)
-        admin_commands_cog = AdminCommandCog(bot=bot, services=services)
+        admin_commands_cog = AdminCommandCog(bot=bot, services=services, config=config)
 
         bot.tree.add_command(commands_cog.main_group, override=True)
         bot.tree.add_command(commands_cog.miq_command, override=True)

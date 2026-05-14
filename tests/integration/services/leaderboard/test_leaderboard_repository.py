@@ -125,32 +125,6 @@ class TestLeaderboardRepository:
         assert data.server_total_winners == 0
 
 
-    async def test_get_challenge_leaderboard_returns_correct_data(
-            self, uow, seeded_votes
-    ):
-        challenge = await uow.challenges.get_current()
-        data = await uow.leaderboards.get_challenge_leaderboard(challenge)
-        assert data.challenge_title == "test_active_challenge"
-        assert data.server_total_submissions == 3
-        assert data.server_total_votes == 4
-
-        user, submission = data.data[0]
-
-        assert user.id == 999
-        assert submission.total_votes == 2
-
-    
-    async def test_get_challenge_leaderboard_returns_empty(
-            self, uow, seeded_challenge
-    ):
-        challenge = await uow.challenges.get_current()
-
-        data = await uow.leaderboards.get_challenge_leaderboard(challenge)
-
-        assert data.challenge_title == "test_active_challenge"
-        assert data.server_total_submissions == 0
-        assert data.server_total_votes == 0
-
     async def test_most_active_time_periods_returns_correct_data(
             self, uow, seeded_users, most_active_periods_data
     ):
@@ -249,13 +223,6 @@ class TestLeaderboardRepository:
         assert users == []
 
 
-    async def test_more_than_10_users_challenge_leaderboard(self, uow, seeded_challenge, more_than_10_submissions):
-        data = await uow.leaderboards.get_challenge_leaderboard(seeded_challenge)
-
-        for user_submission in data.data:
-            user, submission = user_submission
-
-        assert len(data.data) == 10
 
 
     async def test_more_than_10_users_submissions_leaderboard(self, uow, seeded_challenge, update_total_submissions):

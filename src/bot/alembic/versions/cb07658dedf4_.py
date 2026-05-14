@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: 96ba836a9c8e
+Revision ID: cb07658dedf4
 Revises: 
-Create Date: 2026-05-11 13:24:09.169251
+Create Date: 2026-05-14 16:39:01.537655
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '96ba836a9c8e'
+revision: str = 'cb07658dedf4'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -56,7 +56,7 @@ def upgrade() -> None:
     sa.Column('total_submissions', sa.Integer(), nullable=False),
     sa.Column('total_challenges_won', sa.Integer(), nullable=False),
     sa.Column('last_submission', sa.DateTime(timezone=True), nullable=True),
-    sa.Column('is_purge_data', sa.Boolean(), server_default='true', nullable=False),
+    sa.Column('is_purge_data', sa.Boolean(), server_default='false', nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('challenges',
@@ -87,7 +87,8 @@ def upgrade() -> None:
     sa.Column('author_id', sa.BigInteger(), nullable=False),
     sa.ForeignKeyConstraint(['author_id'], ['users.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['challenge_id'], ['monthly_challenges.id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('challenge_id', 'author_id', 'thread_id')
     )
     op.create_index('idx_challenge_id_thread_id_submission_id', 'monthly_submissions', ['challenge_id', 'thread_id', 'id'], unique=False)
     op.create_table('tracks',

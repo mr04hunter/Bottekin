@@ -11,7 +11,7 @@ def make_feedback_stats(stats: User) -> FeedbackStatsData:
         logger.bind(
             feedbacks=feedbacks
         ).debug("Received value on feedback_stats")
-        all_feedbacked_authors = [feedback.track.author for feedback in feedbacks if feedback.track and feedback.track.author]
+        all_feedbacked_authors = [feedback.track.author for feedback in feedbacks if feedback.track and feedback.track_id and feedback.track.author]
         most_feedbacked_authors = []
         count = 0
         if all_feedbacked_authors:
@@ -22,7 +22,7 @@ def make_feedback_stats(stats: User) -> FeedbackStatsData:
     
 
         feedback_stats = FeedbackStatsData(total_feedback_word_count=stats.total_feedback_words,total_feedbacks_given=len(feedbacks),
-                                        most_words_feedback=most_words_feedback , most_feedbacked_authors=most_feedbacked_authors)
+                                        most_words_feedback=most_words_feedback, most_feedbacked_authors=most_feedbacked_authors, total_feedbacked_members=len(set(all_feedbacked_authors)))
 
         logger.bind(
             most_feedbacked_author=most_feedbacked_authors,

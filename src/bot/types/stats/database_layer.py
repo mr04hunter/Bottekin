@@ -8,6 +8,7 @@ from bot.database.models import User, Feedback, Track, Submission
 class FeedbackStatsData:
     total_feedback_word_count: int
     total_feedbacks_given: int
+    total_feedbacked_members: int
     most_feedbacked_authors: list[tuple[User, int]]
     most_feedbacked_members: list[tuple[str, int]] | None = None
     most_words_feedback:  Feedback | None = None
@@ -31,13 +32,8 @@ class MusicStatsData:
 
 @dataclass
 class ChallengeStatsData:
-    most_voted_submissions: list[Submission]
-    total_votes_received: int
     total_submissions: int
     total_challenges_won: int
-    times_voted: int
-    most_voted_user: tuple[User, int] | None = None
-    most_votes_received_by_user: tuple[User, int] | None = None
     
 
 

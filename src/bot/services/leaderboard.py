@@ -93,24 +93,7 @@ class LeaderboardService(BaseService):
         await self.create_or_update_leaderboard_message(channel=leaderboards_channel, embed=leaderboard_embed,
                                                          lb_type=ALL_TIME_CHALLENGE_WON_LEADERBOARD_TYPE)
 
-    @background_task(operation_name="current_challenge_leaderboard_update")
-    async def create_or_update_challenge_leaderboard(self) -> None:
-        challenge = await self.uow.challenges.get_current()
-        if not challenge:
-            return
-        leaderboard_data = await self.uow.leaderboards.get_challenge_leaderboard(challenge=challenge)
-        if not leaderboard_data:
-            return
-        lb_member_data = await self.converter.convert_users_to_members_data(data=leaderboard_data.data)
-        display_data = ChallengeLeaderboardDisplay(data=lb_member_data, challenge_title=leaderboard_data.challenge_title,
-                                                   server_total_votes=leaderboard_data.server_total_votes,
-                                                   server_total_submissions=leaderboard_data.server_total_submissions)
-        embed_builder = EmbedBuilder()
 
-        leaderboard_embed = embed_builder.create_challenge_leaderboard_embed(leaderboard_data=display_data)
-
-        await self.create_or_update_leaderboard_message(channel=cast(TextChannel, self.bot.channels.leaderboards), embed=leaderboard_embed,
-                                                         lb_type=CURRENT_CHALLENGE_LEADERBOARD_TYPE)
 
     @background_task(operation_name="feedback_leaderboard_update")
     async def create_or_update_feedback_leaderboard(self):
@@ -154,7 +137,7 @@ class LeaderboardService(BaseService):
             await asyncio.sleep(0.5)
 
     @background_task(operation_name="most_active_dates_leaderboard_update")
-    async def create_most_active_dates_board(self) -> None:
+    async def create_most_active_dates_board(self) -> Embed | None:
         data = await self.uow.leaderboards.get_most_active_periods()
         if not data:
             return
@@ -186,14 +169,11 @@ class LeaderboardService(BaseService):
 
         most_active_periods_embed = embed_builder.create_most_active_periods_board(activity_data=most_active_periods, most_active_member_data=most_active_member_display_data)
 
-        await self.create_or_update_leaderboard_message(channel=self.bot.channels.leaderboards,
-                                                        lb_type=MOST_ACTIVE_PERIODS_BOARD_TYPE,embed=most_active_periods_embed)
-
-        logger.debug("createupdated")
+        return most_active_periods_embed
         
 
     @background_task(operation_name="server_activity_board_update")
-    async def server_activity_board(self) -> None:
+    async def server_activity_board(self) -> Embed | None:
         today_date = datetime.now(tz=UTC) - timedelta(days=1)
         week_date = datetime.now(tz=UTC) - timedelta(weeks=1)
         month_date = datetime.now(tz=UTC) - timedelta(days=30)
@@ -213,8 +193,7 @@ class LeaderboardService(BaseService):
 
         server_activity_embed = embed_builder.create_server_activity_board(activity_data=server_activity_display)
 
-        await self.create_or_update_leaderboard_message(channel=self.bot.channels.leaderboards,
-                                                        lb_type=SERVER_ACTIVITY_LEADERBOARD_TYPE,embed=server_activity_embed)
+        return server_activity_embed
 
 
     async def get_challenge_role_users(self) -> list[User] | None:

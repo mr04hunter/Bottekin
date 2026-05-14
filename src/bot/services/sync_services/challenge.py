@@ -304,12 +304,6 @@ class ChallengeSync(BaseService):
 
                 reaction_emojis = {str(reaction.emoji): reaction for reaction in submission_message.reactions}
                 
-                votes = await self.extractor.collect_votes(
-                    reaction_emojis=reaction_emojis,
-                    message=submission_message,
-                    existing_user_ids=existing_user_ids,
-                    challenge=challenge,
-                    votes=votes)  
                 
                 winners = await self.extractor.get_winner_data(
                     reaction_emojis=reaction_emojis,
@@ -336,12 +330,6 @@ class ChallengeSync(BaseService):
 
                     await t.challenges.bulk_insert_submissions(submissions=submissions)
 
-                if votes and challenge.is_ongoing_voting:
-                    logger.bind(
-                    votes={user_id:str(votes[user_id]) for user_id in votes}
-                    ).debug("Bulk inserting votes")
-
-                    await t.challenges.bulk_insert_votes(votes=votes, challenge=challenge)
 
                 if winners:
                     logger.bind(

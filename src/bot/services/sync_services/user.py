@@ -19,8 +19,8 @@ class UserSyncService(BaseService):
         after = None
         users = []
         user_ids = set()
-        reactions = {reaction.emoji:reaction for reaction in self.bot.channels.rules_message.reactions if str(reaction.emoji) == "✅"}
-        reacted_users = await self.bot.client.safe_fetch_reaction_users(reaction=reactions.get("✅"), operation="user_sync purge_data_reactions", default={})
+        reactions = {reaction.emoji:reaction for reaction in self.bot.channels.rules_message.reactions if str(reaction.emoji) == "❌"}
+        reacted_users = await self.bot.client.safe_fetch_reaction_users(reaction=reactions.get("❌"), operation="user_sync purge_data_reactions", default={})
         if reacted_users:
             reacted_users = {user.id for user in reacted_users if not user.bot}
         logger.bind(
@@ -44,7 +44,7 @@ class UserSyncService(BaseService):
                         "username":member.name,
                         "created_at":member.created_at,
                         "display_name":member.display_name,
-                        "is_purge_data":not member.id in reacted_users})
+                        "is_purge_data":member.id in reacted_users})
                 user_ids.add(member.id)
 
                 if len(users) >= 100:

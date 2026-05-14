@@ -126,6 +126,10 @@ class Config(BaseSettings):
     def submission_channel_ids(self) -> list[int]:
         return [int(x) for x in self.submission_channels.split(",") if x]
 
+    @property    
+    def all_submission_channel_ids(self) -> list[int]:
+        return [*self.submission_channel_ids, self.monthly_challenge_channel_id]
+
     @field_validator("log_level")
     @classmethod
     def validate_log_level(cls, v: str) -> str:
