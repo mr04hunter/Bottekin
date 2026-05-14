@@ -95,12 +95,9 @@ class DeleteUserButton(discord.ui.Button):
         try:
             if interaction.message:
                 await self.delete_user_callback(self.user.id)
-                await interaction.message.delete()
-                await interaction.response.send_message(
-                    content=f"user_id: {self.user.id}\nusername: {self.user.display_name}\nUser is successfully removed from database.",
-                    delete_after=10,
-                    ephemeral=True
-                )
+                await interaction.edit_original_response(content=f"user_id: {self.user.id}\nusername: {self.user.display_name}\nUser is successfully removed from database.")
+
+
         except Exception as e:
             logger.error(f"error: {e}")
 
@@ -117,13 +114,16 @@ class ConfirmUserDelete(LayoutView):
         super().__init__(timeout=timeout)
         self.user = user
         self.admin_id = admin_id
+        self.container = Container()
         self.buttons = UserButtons(user=self.user, admin_id=self.admin_id, delete_callback=delete_user_callback)
         self.text_display = TextDisplay(
             content=f"# WARNING\nuser_id: {self.user.id}\ndisplay_name: {self.user.display_name}\nThis user is a member of this server.\naRe yOu SurE?", id=1
         )
 
-        self.add_item(self.text_display)
-        self.add_item(self.buttons)
+        self.container.add_item(self.text_display)
+        self.container.add_item(self.buttons)
+
+        self.add_item(self.container)
 
 class HelpView(LayoutView):
     def __init__(self, dev_user: Member, rules_channel_url: str, timeout: int = 180) -> None:
