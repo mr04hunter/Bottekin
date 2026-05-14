@@ -20,7 +20,11 @@ class UserSyncService(BaseService):
         users = []
         user_ids = set()
         reactions = {reaction.emoji:reaction for reaction in self.bot.channels.rules_message.reactions if str(reaction.emoji) == "❌"}
-        reacted_users = await self.bot.client.safe_fetch_reaction_users(reaction=reactions.get("❌"), operation="user_sync purge_data_reactions", default={})
+        reaction=reactions.get("❌")
+        if reaction:
+            reacted_users = await self.bot.client.safe_fetch_reaction_users(reaction=reaction, operation="user_sync purge_data_reactions", default={})
+        else:
+            reacted_users = []
         if reacted_users:
             reacted_users = {user.id for user in reacted_users if not user.bot}
         logger.bind(

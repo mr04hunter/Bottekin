@@ -1,4 +1,4 @@
-from discord import Object
+from discord import Object, Reaction
 from datetime import datetime
 
 from bot.logging import get_logger
@@ -145,10 +145,10 @@ class DcClient:
     @with_retry()
     async def safe_fetch_reaction_users(
         self,
-        reaction,
+        reaction: "Reaction",
         operation: str,
         limit:int | None = None,
-        after:Object | datetime | None = None,
+        after:Object | None = None,
         before:Object | datetime | None = None,
         oldest_first: bool = False,
         default=[]) -> list:
