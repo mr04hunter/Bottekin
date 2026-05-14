@@ -31,7 +31,7 @@ class DeleteQuoteButton(discord.ui.DynamicItem[discord.ui.Button], template=r"de
 
         if interaction.user.id not in allowed:
             await interaction.response.send_message(
-                "You can't remove this quote.", ephemeral=True
+                "You can't remove this quote.", ephemeral=True 
             )
             return
 
@@ -94,6 +94,7 @@ class DeleteUserButton(discord.ui.Button):
 
         try:
             if interaction.message:
+                await interaction.response.defer(ephemeral=True)
                 await self.delete_user_callback(self.user.id)
                 await interaction.edit_original_response(content=f"user_id: {self.user.id}\nusername: {self.user.display_name}\nUser is successfully removed from database.")
 
