@@ -127,6 +127,7 @@ async def main() -> None:
         bot.tree.add_command(commands_cog.main_group, override=True)
         bot.tree.add_command(commands_cog.miq_command, override=True)
         bot.tree.add_command(admin_commands_cog.admin_group, override=True)
+        bot.tree.add_command(admin_commands_cog.moderator_group, override=True)
 
         await bot.add_cog(commands_cog)
         await bot.add_cog(admin_commands_cog)

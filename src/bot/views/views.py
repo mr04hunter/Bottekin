@@ -76,7 +76,7 @@ class QuoteView(LayoutView):
 class DeleteUserButton(discord.ui.Button):
     def __init__(self, user:Member,admin_id, delete_user_callback:Callable[[int],Awaitable]):
         super().__init__(
-                label="Remove my quote",
+                label="Delete User",
                 style=discord.ButtonStyle.danger
             )
         
@@ -119,7 +119,7 @@ class ConfirmUserDelete(LayoutView):
         self.admin_id = admin_id
         self.buttons = UserButtons(user=self.user, admin_id=self.admin_id, delete_callback=delete_user_callback)
         self.text_display = TextDisplay(
-            content=f"# WARNING\nuser_id: {self.user.id}\ndisplay_name: {self.user.display_name}\nThis user is a member of this server.", id=1
+            content=f"# WARNING\nuser_id: {self.user.id}\ndisplay_name: {self.user.display_name}\nThis user is a member of this server.\naRe yOu SurE?", id=1
         )
 
         self.add_item(self.text_display)

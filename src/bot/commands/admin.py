@@ -35,17 +35,24 @@ class AdminGroup(app_commands.Group, name="admin", description="admin commands",
 
 
     @app_commands.command(name="delete_member", description="deletes a user by id")
-    async def delete_member(self, interaction: Interaction, user_id:int) -> None:
+    async def delete_member(self, interaction: Interaction, user_id:str) -> None:
+        try:
+            converted_user_id = int(user_id)
+        
+        except ValueError:
+            await interaction.response.send_message("Please enter a valid integer value.", ephemeral=True)
+            return
+
         if interaction.guild is None:
             await interaction.response.send_message("You must call this command inside a guild", ephemeral=True)
             return
         
         await interaction.response.defer(ephemeral=True)
-        user = await self.services.user.get_user(user_id=user_id)
+        user = await self.services.user.get_user(user_id=converted_user_id)
         if not user:
             await interaction.followup.send(content="User already does not exist in database", ephemeral=True)
             return
-        dc_user = await interaction.guild.fetch_member(user_id)
+        dc_user = await interaction.guild.fetch_member(converted_user_id)
 
         if dc_user:
             view = ConfirmUserDelete(user=dc_user, admin_id=self.config.admin_id, delete_user_callback=self.services.user.delete_user)
@@ -53,7 +60,7 @@ class AdminGroup(app_commands.Group, name="admin", description="admin commands",
             return
         
         
-        await self.services.user.delete_user(user_id)
+        await self.services.user.delete_user(converted_user_id)
         
         await interaction.followup.send(content=f"user_id:{user.id}\nusername:{user.display_name}\nUser is successfully removed from database\n")
     
