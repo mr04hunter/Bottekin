@@ -99,7 +99,7 @@ class UserButtons(ActionRow):
         self.delete_user_callback = delete_callback
 
 
-    @button(label="Delete User", style=discord.ButtonStyle.primary, disabled=True)
+    @button(label="Delete User", style=discord.ButtonStyle.danger, disabled=False)
     async def delete_user_confirm(self, interaction: Interaction, button: Button) -> None:
         if interaction.user.id != self.admin_id:
             await interaction.response.send_message(
