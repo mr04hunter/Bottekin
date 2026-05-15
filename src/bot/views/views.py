@@ -118,7 +118,7 @@ class ConfirmUserDelete(LayoutView):
         self.container = Container()
         self.buttons = UserButtons(user=self.user, admin_id=self.admin_id, delete_callback=delete_user_callback)
         self.text_display = TextDisplay(
-            content=f"# WARNING\nuser_id: {self.user.id}\ndisplay_name: {self.user.display_name}\nThis user is a member of this server.\naRe yOu SurE?", id=1
+            content=f"# WARNING\nuser_id: {self.user.id}\ndisplay_name: {self.user.display_name}\nConfirm this user will be removed from the database", id=1
         )
 
         self.container.add_item(self.text_display)

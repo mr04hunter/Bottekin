@@ -21,8 +21,9 @@ def make_feedback_stats(stats: User) -> FeedbackStatsData:
         most_words_feedback = max(feedbacks, key= lambda feedback: feedback.word_count)
     
 
-        feedback_stats = FeedbackStatsData(total_feedback_word_count=stats.total_feedback_words,total_feedbacks_given=len(feedbacks),
-                                        most_words_feedback=most_words_feedback, most_feedbacked_authors=most_feedbacked_authors, total_feedbacked_members=len(set(all_feedbacked_authors)))
+        feedback_stats = FeedbackStatsData(
+            total_feedbacks_given=len(feedbacks),
+            most_feedbacked_authors=most_feedbacked_authors, total_feedbacked_members=len(set(all_feedbacked_authors)))
 
         logger.bind(
             most_feedbacked_author=most_feedbacked_authors,

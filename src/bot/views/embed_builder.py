@@ -69,9 +69,9 @@ class EmbedBuilder:
         """returns an embed that presents the feedback stats data"""
 
         feedback_text = (f"{display_name} gave **{feedback_stats.total_feedbacks_given}** "
-        f"feedback {"message" + self._check_plural(length=feedback_stats.total_feedbacks_given)}\n")
+        f"feedback {"message" + self._check_plural(length=feedback_stats.total_feedbacks_given)}.\n")
         if feedback_stats.total_members_given_feedback > 0:
-            feedback_text += f"{display_name} gave feedback to **{feedback_stats.total_members_given_feedback}** members."
+            feedback_text += f"{display_name} gave feedback to **{feedback_stats.total_members_given_feedback}** member{self._check_plural(feedback_stats.total_members_given_feedback)}."
 
         feedback_embed = Embed(color=Colour.blue(), title="**FEEDBACK STATS**",description=feedback_text)
         
@@ -96,11 +96,6 @@ class EmbedBuilder:
 
             feedback_embed.add_field(name=f"**TOP 3 MEMBERS {display_name.upper()} SUPPORTED THE MOST**", value=most_feedbacked_authors_text, inline=False)
 
-        if feedback_stats.most_words_feedback_message:
-            most_word_feedback, word_count = feedback_stats.most_words_feedback_message
-            your_most_words_feedback_text = (f"{display_name}{self._get_possessive(display_name=display_name)} "
-            f"longest feedback: {most_word_feedback.jump_url}\n Total words: **{word_count}**")
-            feedback_embed.add_field(name="**FEEDBACK WITH THE MOST WORDS**", value=your_most_words_feedback_text, inline=False)
 
         return feedback_embed 
         
@@ -111,14 +106,13 @@ class EmbedBuilder:
         if music_stats.total_tracks == 0:
             return
         
-        music_text = (f"{display_name} shared **{music_stats.total_tracks}** {"track" + self._check_plural(length=music_stats.total_tracks)} to get feedback\n"
+        music_text = (f"{display_name} shared **{music_stats.total_tracks}** {"track" + self._check_plural(length=music_stats.total_tracks)} to get feedback.\n"
                       f"Total feedback received: **{music_stats.total_feedback_received}**")
 
         
         music_embed = Embed(color=Colour.red(), title="**MUSIC STATS**",description=music_text) 
         music_embed.set_thumbnail(url=MUSIC_STATS_THUMBNAIL_URL) if music_embed else None
 
-        most_words_feedback_text: str = "\n"
         top_tracks_stats_text: str | None =  "\n"
         top_stats_text = ""
 
@@ -128,7 +122,7 @@ class EmbedBuilder:
                 for track, total_feedback in music_stats.top_feedbacked_track_messages if total_feedback > 0])
             
             if top_tracks_stats_text:
-                music_embed.add_field(name="**TOP 3 TRACKS WITH MOST FEEDBACK:**", value=top_tracks_stats_text, inline=False)
+                music_embed.add_field(name="**TOP 3 TRACKS WITH MOST FEEDBACK**", value=top_tracks_stats_text, inline=False)
         
         logger.debug(f"TOP FB TRACKS DONE")
 
@@ -141,22 +135,6 @@ class EmbedBuilder:
                 music_embed.add_field(name="**MOST REACTED TRACK**",value=most_reacted_message_text)
 
         logger.debug(f"TOP MOST REACTED MESSAGE DONE")
-           
-        if music_stats.most_words_fb_received_message:
-            most_words_fb_received_message, word_count = music_stats.most_words_fb_received_message
-            if word_count > 0:
-                mention_name = most_words_fb_received_message.author.mention
-
-                if not most_words_fb_received_message.author.mention:
-                    mention_name = most_words_fb_received_message.author.display_name
-
-                most_words_feedback_text += (f"By: {mention_name}\nWord count: "
-                f"**{word_count}**!\nMessage: {most_words_fb_received_message.jump_url}\n")
-
-                music_embed.add_field(name="**FEEDBACK WITH THE MOST WORDS RECEIVED**", value=most_words_feedback_text, inline=False)
-
-
-        logger.debug(f"MOST WORDS FB RECEIVED DONE")
 
         if music_stats.top_fb_givers:
             top_stats_lines = []
@@ -189,12 +167,12 @@ class EmbedBuilder:
         if challenge_stats.total_submissions == 0:
             return
         
-        description_text = (f"\n{display_name} participated in **{challenge_stats.total_submissions}** "
-        f"{"challenge" + self._check_plural(length=challenge_stats.total_submissions)}\n")
+        description_text = (f"\n{display_name} participated in **{challenge_stats.total_submissions}**."
+        f"{"challenge" + self._check_plural(length=challenge_stats.total_submissions)}.\n")
 
         if challenge_stats.total_challenges_won != 0:
-            description_text += (f"{display_name} won **{challenge_stats.total_challenges_won}** "
-                                 f"{"challenge" + self._check_plural(length=challenge_stats.total_challenges_won)}\n")
+            description_text += (f"{display_name} won **{challenge_stats.total_challenges_won}**"
+                                 f"{"challenge" + self._check_plural(length=challenge_stats.total_challenges_won)}.\n")
 
         
         challenge_embed = Embed(
@@ -323,15 +301,13 @@ class EmbedBuilder:
             rank = self._get_challenge_rank(index=index)
             member_name, feedback_data = data
             total_feedbacks_given = feedback_data.get("total_feedbacks_given",0)
-            total_feedback_words = feedback_data.get("total_feedback_words",0)
             total_feedbacked_authors = feedback_data.get("total_feedbacked_authors",0)
 
             total_feedback_text = f"Total feedback: **{total_feedbacks_given}**\n" if total_feedbacks_given > 0 else ""
-            total_fb_words_text = f"Total words: **{total_feedback_words}**\n" if total_feedback_words > 0 else ""
-            total_feedbacked_authors_text = (f"Gave feedback to **{total_feedbacked_authors}** {"member" + self._check_plural(length=total_feedbacked_authors)}" 
+            total_feedbacked_authors_text = (f"Gave feedback to **{total_feedbacked_authors}** {"member" + self._check_plural(length=total_feedbacked_authors)}." 
                                              if total_feedbacked_authors > 0 else "") 
 
-            return (f"{index+1}.{rank}{member_name}\n{total_feedback_text+total_fb_words_text+total_feedbacked_authors_text}"
+            return (f"{index+1}.{rank}{member_name}\n{total_feedback_text+total_feedbacked_authors_text}"
                     f"{self._put_separator(leaderboard_data.leaderboard_length)}")
 
                 
@@ -342,8 +318,7 @@ class EmbedBuilder:
 
         description=(f"**SERVER STATS**\n"
             f"Feedback messages: "f"**{leaderboard_data.server_total_feedback if leaderboard_data.server_total_feedback >= 0 else "No data"}**\n"
-            f"Total Tracks: "f"**{leaderboard_data.server_total_tracks if leaderboard_data.server_total_tracks >= 0 else "No data"}**\n"
-            f"Total feedback words: **{leaderboard_data.server_total_fb_words if leaderboard_data.server_total_fb_words >= 0 else "No data"}**\n")
+            f"Total Tracks: "f"**{leaderboard_data.server_total_tracks if leaderboard_data.server_total_tracks >= 0 else "No data"}**\n")
 
 
         leaderboard_embed = self._create_leaderboard_base(title=title, description=description, 
@@ -356,7 +331,7 @@ class EmbedBuilder:
 
     def create_server_activity_board(self, activity_data: ServerActivityDisplay) -> Embed:
         title = "**SERVER ACTIVITY**"
-        description = "Daily/Weekly/monthly server activity"
+        description = "Daily/Weekly/monthly server activity in Community Feedback category."
 
         embed = Embed(
             title=title,
@@ -396,7 +371,7 @@ class EmbedBuilder:
 
     def create_most_active_periods_board(self, activity_data: MostActivePeriodDisplay, most_active_member_data: MostActiveMemberDisplay) -> Embed:
         title = "**MOST ACTIVE TIME PERIODS**"
-        description = "Most active day/week/month"
+        description = "Most active day/week/month in Community Feedback category."
 
         embed = Embed(
             title=title,

@@ -48,7 +48,7 @@ class ServiceContainer:
         scheduler=scheduler,extractor=extractor, validator=self.challenge_validator,
         config=config, track_extractor=track_extractor)
 
-        self.leaderboard = LeaderboardService(uow=self.uow, bot=self.bot, converter=converter)
+        self.leaderboard = LeaderboardService(uow=self.uow, bot=self.bot, converter=converter, config=self.config)
         self.role = RoleService(uow=self.uow, bot=self.bot, config=self.config)
         self.sync_service = SyncService(
         uow=self.uow, bot=self.bot,extractor=extractor,

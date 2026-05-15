@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 class TestLeaderboardService:
     @pytest.fixture
-    async def service(self, uow, mock_bot):
+    async def service(self, uow, mock_bot, test_config):
         mock_bot.convert_users_to_members_data = AsyncMock(
             side_effect=lambda data: [
                 (f"<@{user.id}>", val) for user, val in data
@@ -28,7 +28,7 @@ class TestLeaderboardService:
         mock_bot.channels = MagicMock()
         mock_bot.channels.leaderboards = mock_channel
 
-        return LeaderboardService(uow=uow, bot=mock_bot, converter=AsyncMock())
+        return LeaderboardService(uow=uow, bot=mock_bot, converter=AsyncMock(), config=test_config)
         
 
     async def test_creates_new_message_when_none_exists(

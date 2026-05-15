@@ -116,7 +116,7 @@ class LeaderboardRepository(BaseRepository):
                 feedback_count=feedback_count
             )
         
-    async def get_most_active_periods(self) -> tuple[dict[str, MostActivePeriodData], MostActiveMemberData] | None:
+    async def get_most_active_periods(self, admin_id:int) -> tuple[dict[str, MostActivePeriodData], MostActiveMemberData] | None:
         async with self.get_session() as session:
             most_active_member_query = (
                 select(
@@ -124,7 +124,8 @@ class LeaderboardRepository(BaseRepository):
                     User.total_feedbacks_given.label("total_feedback"),
                     func.count(Track.id.distinct()).label("total_tracks"),
                 )
-                .join(Track, Track.author_id == User.id)
+                .where(User.id!=admin_id)
+                .outerjoin(Track, Track.author_id == User.id)
                 .group_by(User.id)
                 .order_by(
                     desc(

@@ -126,9 +126,9 @@ class TestLeaderboardRepository:
 
 
     async def test_most_active_time_periods_returns_correct_data(
-            self, uow, seeded_users, most_active_periods_data
+            self, uow, seeded_users, most_active_periods_data, test_config
     ):
-        data = await uow.leaderboards.get_most_active_periods()
+        data = await uow.leaderboards.get_most_active_periods(admin_id=test_config.admin_id)
         periods_data, most_active_member_data = data
         most_active_day_data = periods_data["day"]
         most_active_week_data = periods_data["week"]
@@ -157,9 +157,9 @@ class TestLeaderboardRepository:
 
 
     async def test_most_active_time_periods_return_empty(
-            self, uow
+            self, uow, test_config
     ):
-        data = await uow.leaderboards.get_most_active_periods()
+        data = await uow.leaderboards.get_most_active_periods(admin_id=test_config.admin_id)
         assert data is None
 
 

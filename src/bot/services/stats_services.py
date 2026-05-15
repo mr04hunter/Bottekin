@@ -44,19 +44,7 @@ class StatsService(BaseService):
                             error=str(e)
                         ).warning(f"Could not convert top_feedbacked_members data")
                         
-                if music_stats.most_words_received_feedback:
-                    try:
-                        thread = await self.bot.client.safe_discord_call(coro=lambda mwrf=music_stats.most_words_received_feedback.thread_id:guild.fetch_channel(mwrf), operation="most_words_received fb thread fetch")
-                        
-                        thread = cast(Thread, thread)
-                        most_words_feedback_message = await self.bot.client.safe_discord_call(coro=lambda mwrf=music_stats.most_words_received_feedback.id:thread.fetch_message(mwrf), operation="most_words_feedback fetch_message")
-                        if most_words_feedback_message:
-                            music_display_data.most_words_fb_received_message = (most_words_feedback_message, music_stats.most_words_received_feedback.word_count)
-
-                    except discord.NotFound:
-                        logger.bind(
-                            most_words_feedback_id=str(music_stats.most_words_received_feedback.id)
-                        ).warning(f"Could not fetch most_words_received feedback message")
+            
 
                 if music_stats.most_reacted_track: 
                     try: 
@@ -114,10 +102,6 @@ class StatsService(BaseService):
             
             feedback_display_data = FeedbackStatsDisplay(
                 total_feedbacks_given=feedback_stats.total_feedbacks_given, total_members_given_feedback=feedback_stats.total_feedbacked_members)
-            
-
-
-
 
             most_feedbacked_members = []
             for author, count in feedback_stats.most_feedbacked_authors:
@@ -134,22 +118,6 @@ class StatsService(BaseService):
                         user_id=author.id
                     ).warning("User could not fetched")
             feedback_display_data.most_feedbacked_members = most_feedbacked_members
-            
-
-            
-
-            if feedback_stats.most_words_feedback:
-                try:
-                    thread = await self.bot.client.safe_discord_call(coro=lambda tid=feedback_stats.most_words_feedback.thread_id:guild.fetch_channel(tid), operation="most_words_feedback fetch_thread")
-                    thread = cast(Thread, thread)
-                    dc_most_words_feedback_message = await self.bot.client.safe_discord_call(coro=lambda mid=feedback_stats.most_words_feedback.id:thread.fetch_message(mid),operation="most_words_feedback fetch_message")
-                    if dc_most_words_feedback_message:
-                        feedback_display_data.most_words_feedback_message = (dc_most_words_feedback_message, feedback_stats.most_words_feedback.word_count)
-                except discord.NotFound:
-                    logger.bind(
-                        message_id=feedback_stats.most_words_feedback.id
-                    ).warning("Error fetching feedback message")
-
 
 
             feedback_embed = self.embed_builder.create_feedback_stats_embed(feedback_stats=feedback_display_data, display_name=display_name)

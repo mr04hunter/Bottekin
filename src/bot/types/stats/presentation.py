@@ -23,7 +23,6 @@ class MusicStatsDisplay:
 
     top_feedbacked_track_messages: list[tuple[Message, int]] | None = None
     most_reacted_track_message: tuple[Message, int] | None = None
-    most_words_fb_received_message: tuple[Message, int] | None = None 
 
 
 @dataclass

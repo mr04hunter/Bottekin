@@ -24,7 +24,7 @@ class TestStatsService:
         assert str(user.total_feedbacks_received) in music_stats_text
 
         fields = embed.get("fields")
-        top_tracks, most_reacted_track, most_words_feedback, top_fb_givers = fields
+        top_tracks, most_reacted_track, top_fb_givers = fields
 
         top_tracks_val = top_tracks.get("value")
         assert make_message(id=seeded_stat_tracks.track0.id).jump_url in top_tracks_val
@@ -38,9 +38,6 @@ class TestStatsService:
         assert user.display_name in most_reacted_track_val
         assert make_message(seeded_stats.most_reacted_track.id).jump_url in most_reacted_track_val
 
-        most_words_feedback_val = most_words_feedback.get("value")
-
-        assert make_message(id=seeded_stats.most_words_feedback_received.id).jump_url in most_words_feedback_val
 
         top_fb_givers_val = top_fb_givers.get("value")
 
@@ -72,8 +69,8 @@ class TestStatsService:
         assert len({track.author_id for track in user.gave_feedback_to if track.author_id is not None})
 
         fields = embed.get("fields")
-        top_supported_authors, most_words_feedback = fields
-
+        top_supported_authors, = fields
+        print(f"fields {fields}")
         top_supported_authors_val = top_supported_authors.get("value")
 
         top_supported_authors = seeded_stats.top_supported_members(user.id)
@@ -85,9 +82,6 @@ class TestStatsService:
             assert str(fb_count) in top_supported_authors_val
 
 
-        most_words_feedback_val = most_words_feedback.get("value")
-
-        assert make_message(id=seeded_stats.most_words_feedback_of_user(user.id).id).jump_url in most_words_feedback_val
 
 
 

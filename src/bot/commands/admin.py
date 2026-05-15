@@ -55,14 +55,12 @@ class AdminGroup(app_commands.Group, name="admin", description="admin commands",
         dc_user = await interaction.guild.fetch_member(converted_user_id)
 
         if dc_user:
-            view = ConfirmUserDelete(user=dc_user, admin_id=self.config.admin_id, delete_user_callback=self.services.user.delete_user)
-            await interaction.followup.send(view=view, ephemeral=True)
+            await interaction.followup.send(content=f"user_id:{user.id}\nusername:{user.display_name}\n**This user is still a member in this server and cannot be removed.**\n")
             return
         
         
-        await self.services.user.delete_user(converted_user_id)
-        
-        await interaction.followup.send(content=f"user_id:{user.id}\nusername:{user.display_name}\nUser is successfully removed from database\n")
+        view = ConfirmUserDelete(user=dc_user, admin_id=self.config.admin_id, delete_user_callback=self.services.user.delete_user)
+        await interaction.followup.send(view=view, ephemeral=True)
     
 
     @increment_stats.autocomplete("stats")

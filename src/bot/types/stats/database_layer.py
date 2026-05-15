@@ -6,12 +6,11 @@ from bot.database.models import User, Feedback, Track, Submission
 
 @dataclass
 class FeedbackStatsData:
-    total_feedback_word_count: int
     total_feedbacks_given: int
     total_feedbacked_members: int
     most_feedbacked_authors: list[tuple[User, int]]
     most_feedbacked_members: list[tuple[str, int]] | None = None
-    most_words_feedback:  Feedback | None = None
+
     
 
      

@@ -28,15 +28,17 @@ from bot.database.models import User
 if TYPE_CHECKING:
     from bot.types.protocols import ChannelProvider
     from bot.utils.converters import BotConverter
+    from bot.config import Config
 
 from bot.error_handler.decorators import background_task, discord_operation
 
 logger = get_logger("leaderboard_service")
 
 class LeaderboardService(BaseService):
-    def __init__(self, uow: UnitOfWork, bot: "ChannelProvider", converter:"BotConverter") -> None:
+    def __init__(self, uow: UnitOfWork, bot: "ChannelProvider", converter:"BotConverter", config: "Config") -> None:
         super().__init__(uow, bot)
         self.converter = converter
+        self.config = config
 
 
     @discord_operation
@@ -138,7 +140,7 @@ class LeaderboardService(BaseService):
 
     @background_task(operation_name="most_active_dates_leaderboard_update")
     async def create_most_active_dates_board(self) -> Embed | None:
-        data = await self.uow.leaderboards.get_most_active_periods()
+        data = await self.uow.leaderboards.get_most_active_periods(admin_id=self.config.admin_id)
         if not data:
             return
         

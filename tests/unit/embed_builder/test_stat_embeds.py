@@ -12,11 +12,9 @@ class TestStatEmbedBuilder:
     
 
     def test_feedback_embed(self, builder):
-        most_words_feedback_message = make_message(id=123)
         data = FeedbackStatsDisplay(
             total_members_given_feedback=15,
             total_feedbacks_given=10,
-            most_words_feedback_message=(most_words_feedback_message, 30),
             most_feedbacked_members=[("member1", 2), ("member2",3), ("member3", 4)]
             )
         
@@ -26,12 +24,12 @@ class TestStatEmbedBuilder:
 
         fields = embed_data.get("fields")
 
-        assert len(fields) == 2
+        assert len(fields) == 1
 
-        top_supported_members_field, most_words_feedback_message_field = fields
+        top_supported_members_field, = fields
 
         top_supported_members_val = top_supported_members_field.get("value")
-        most_words_feedback_message_val = most_words_feedback_message_field.get("value")
+
 
         assert "test_display_name" in embed_data.get("description")
         assert str(data.total_feedbacks_given) in embed_data.get("description")
@@ -46,8 +44,7 @@ class TestStatEmbedBuilder:
         assert data.most_feedbacked_members[2][0] in top_supported_members_val #type: ignore
         assert str(data.most_feedbacked_members[2][1]) in top_supported_members_val #type: ignore
 
-        assert data.most_words_feedback_message[0].jump_url in most_words_feedback_message_val #type:ignore
-        assert str(data.most_words_feedback_message[1]) in most_words_feedback_message_val #type:ignore
+
             
 
     def test_partial_feedback_embed(self, builder):
@@ -78,15 +75,13 @@ class TestStatEmbedBuilder:
         ]
 
         most_reacted_track_message = make_message(id=12133)
-        most_words_fb_received_message = make_message(id=12133, author=make_member(id=123))
 
         data = MusicStatsDisplay(
             total_tracks=10,
             total_feedback_received=8,
             top_fb_givers=[("member1", 3), ("member2", 2), ("member3", 2)],
             top_feedbacked_track_messages=top_feedbacked_tracks, #type: ignore
-            most_reacted_track_message=(most_reacted_track_message, 2),
-            most_words_fb_received_message=(most_words_fb_received_message, 5)
+            most_reacted_track_message=(most_reacted_track_message, 2)
         )
 
         embed = builder.create_music_stats_embed(music_stats=data, display_name="test_display_name")
@@ -95,13 +90,13 @@ class TestStatEmbedBuilder:
 
         fields = embed_data.get("fields")
 
-        assert len(fields) == 4
+        assert len(fields) == 3
 
-        top_tracks_field, most_reacted_field, most_words_received_field, top_fb_givers_field = fields
+        top_tracks_field, most_reacted_field, top_fb_givers_field = fields
 
         top_tracks_val = top_tracks_field.get("value")
         most_reacted_val = most_reacted_field.get("value")
-        most_words_received_val = most_words_received_field.get("value")
+
         top_fb_givers_val = top_fb_givers_field.get("value")
 
         assert "test_display_name" in embed_data.get("description")
@@ -119,10 +114,6 @@ class TestStatEmbedBuilder:
 
         assert data.most_reacted_track_message[0].jump_url in most_reacted_val #type:ignore
         assert str(data.most_reacted_track_message[1]) in most_reacted_val #type:ignore
-
-        assert most_words_fb_received_message.author.mention in most_words_received_val
-        assert most_words_fb_received_message.jump_url in most_words_received_val
-        assert str(data.most_words_fb_received_message[1]) in most_words_received_val #type: ignore
 
 
         assert data.top_fb_givers[0][0] in top_fb_givers_val #type: ignore

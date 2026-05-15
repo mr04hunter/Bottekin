@@ -187,61 +187,51 @@ class TestLeaderboardEmbedBuilder:
         leaderboard_data = [
             ("member1", {
                 "total_feedbacks_given":10,
-                "total_feedback_words":100,
                 "total_feedbacked_authors":10
             }),
 
             ("member2", {
                 "total_feedbacks_given":9,
-                "total_feedback_words":99,
                 "total_feedbacked_authors":9
             }),
 
             ("member3", {
                 "total_feedbacks_given":8,
-                "total_feedback_words":88,
                 "total_feedbacked_authors":8
             }),
 
             ("member4", {
                 "total_feedbacks_given":7,
-                "total_feedback_words":77,
                 "total_feedbacked_authors":7
             }),
 
             ("member5", {
                 "total_feedbacks_given":6,
-                "total_feedback_words":66,
                 "total_feedbacked_authors":6
             }),
 
             ("member6", {
                 "total_feedbacks_given":5,
-                "total_feedback_words":55,
                 "total_feedbacked_authors":5
             }),
 
             ("member7", {
                 "total_feedbacks_given":4,
-                "total_feedback_words":44,
                 "total_feedbacked_authors":4
             }),
 
             ("member8", {
                 "total_feedbacks_given":3,
-                "total_feedback_words":33,
                 "total_feedbacked_authors":3
             }),
 
             ("member9", {
                 "total_feedbacks_given":2,
-                "total_feedback_words":22,
                 "total_feedbacked_authors":2
             }),
 
             ("member10", {
                 "total_feedbacks_given":1,
-                "total_feedback_words":11,
                 "total_feedbacked_authors":1
             })
         ]
@@ -250,7 +240,6 @@ class TestLeaderboardEmbedBuilder:
             data=leaderboard_data,
             leaderboard_length=10,
             server_total_feedback=55,
-            server_total_fb_words=595,
             server_total_tracks=20
         )
         embed = builder.create_feedback_leaderboard(leaderboard_data=data)
@@ -262,7 +251,6 @@ class TestLeaderboardEmbedBuilder:
 
         assert title == "**FEEDBACK LEADERBOARD**"
 
-        assert str(data.server_total_fb_words) in description
         assert str(data.server_total_feedback) in description
         assert str(data.server_total_tracks) in description
 
@@ -272,16 +260,16 @@ class TestLeaderboardEmbedBuilder:
 
         leaderboard_val = leaderboard_field.get("value")
 
-        assert f"1. :first_place: member1\nTotal feedback: **10**\nTotal words: **100**\nGave feedback to **10**" in leaderboard_val
-        assert f"2. :second_place: member2\nTotal feedback: **9**\nTotal words: **99**\nGave feedback to **9**" in leaderboard_val
-        assert f"3. :third_place: member3\nTotal feedback: **8**\nTotal words: **88**\nGave feedback to **8**" in leaderboard_val
-        assert f"4. member4\nTotal feedback: **7**\nTotal words: **77**\nGave feedback to **7**" in leaderboard_val
-        assert f"5. member5\nTotal feedback: **6**\nTotal words: **66**\nGave feedback to **6**" in leaderboard_val
-        assert f"6. member6\nTotal feedback: **5**\nTotal words: **55**\nGave feedback to **5**" in leaderboard_val
-        assert f"7. member7\nTotal feedback: **4**\nTotal words: **44**\nGave feedback to **4**" in leaderboard_val
-        assert f"8. member8\nTotal feedback: **3**\nTotal words: **33**\nGave feedback to **3**" in leaderboard_val
-        assert f"9. member9\nTotal feedback: **2**\nTotal words: **22**\nGave feedback to **2**" in leaderboard_val
-        assert f"10. member10\nTotal feedback: **1**\nTotal words: **11**\nGave feedback to **1**" in leaderboard_val
+        assert f"1. :first_place: member1\nTotal feedback: **10**\nGave feedback to **10**" in leaderboard_val
+        assert f"2. :second_place: member2\nTotal feedback: **9**\nGave feedback to **9**" in leaderboard_val
+        assert f"3. :third_place: member3\nTotal feedback: **8**\nGave feedback to **8**" in leaderboard_val
+        assert f"4. member4\nTotal feedback: **7**\nGave feedback to **7**" in leaderboard_val
+        assert f"5. member5\nTotal feedback: **6**\nGave feedback to **6**" in leaderboard_val
+        assert f"6. member6\nTotal feedback: **5**\nGave feedback to **5**" in leaderboard_val
+        assert f"7. member7\nTotal feedback: **4**\nGave feedback to **4**" in leaderboard_val
+        assert f"8. member8\nTotal feedback: **3**\nGave feedback to **3**" in leaderboard_val
+        assert f"9. member9\nTotal feedback: **2**\nGave feedback to **2**" in leaderboard_val
+        assert f"10. member10\nTotal feedback: **1**\nGave feedback to **1**" in leaderboard_val
 
 
     def test_feedback_leaderboard_empty_data(self, builder):
@@ -341,7 +329,7 @@ class TestLeaderboardEmbedBuilder:
         description = embed_data.get("description")
 
         assert title == "**SERVER ACTIVITY**"
-        assert description == "Daily/Weekly/monthly server activity"
+        assert description == "Daily/Weekly/monthly server activity in Community Feedback category."
 
         fields = embed_data.get("fields")
 
@@ -393,7 +381,7 @@ class TestLeaderboardEmbedBuilder:
         description = embed_data.get("description")
 
         assert title == "**MOST ACTIVE TIME PERIODS**"
-        assert description == "Most active day/week/month"
+        assert description == "Most active day/week/month in Community Feedback category."
 
         fields = embed_data.get("fields")
         
