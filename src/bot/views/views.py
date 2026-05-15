@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Awaitable, Callable
+from typing import Awaitable, Callable, TYPE_CHECKING
 from discord.ui import LayoutView, Container, TextDisplay, ActionRow, MediaGallery
 from discord import  Member, Message, MediaGalleryItem
 from discord import Interaction
@@ -9,6 +9,8 @@ from bot.logging import get_logger
 
 logger = get_logger(name="views")
 
+if TYPE_CHECKING:
+    from bot.database.models import User
 
 class DeleteQuoteButton(discord.ui.DynamicItem[discord.ui.Button], template=r"delete_quote_(?P<author>\d+)_(?P<caller>\d+)"):
     def __init__(self, author_id: int, caller_id: int):
@@ -74,7 +76,7 @@ class QuoteView(LayoutView):
 
 
 class DeleteUserButton(discord.ui.Button):
-    def __init__(self, user:Member,admin_id, delete_user_callback:Callable[[int],Awaitable]):
+    def __init__(self, user:"User",admin_id, delete_user_callback:Callable[[int],Awaitable]):
         super().__init__(
                 label="Delete User",
                 style=discord.ButtonStyle.danger
@@ -105,13 +107,13 @@ class DeleteUserButton(discord.ui.Button):
 
 
 class UserButtons(ActionRow):
-    def __init__(self, user: "Member", admin_id: int, delete_callback:Callable[[int], Awaitable]) -> None:
+    def __init__(self, user: "User", admin_id: int, delete_callback:Callable[[int], Awaitable]) -> None:
         super().__init__()
         self.add_item(DeleteUserButton(user=user, admin_id=admin_id, delete_user_callback=delete_callback))
 
 
 class ConfirmUserDelete(LayoutView):
-    def __init__(self, *, timeout: float | None = 180, user:"Member", admin_id:int, delete_user_callback: Callable[[int], Awaitable]) -> None:
+    def __init__(self, *, timeout: float | None = 180, user:"User", admin_id:int, delete_user_callback: Callable[[int], Awaitable]) -> None:
         super().__init__(timeout=timeout)
         self.user = user
         self.admin_id = admin_id

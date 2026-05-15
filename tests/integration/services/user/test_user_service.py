@@ -51,7 +51,7 @@ class TestUserService:
         assert user.total_submissions == 5
         assert user.total_feedbacks_given == 10
         assert user.total_challenges_won == 15
-        assert user.total_feedback_words == 30
+        assert user.total_feedback_words == 0 # Not in stats constant
         assert user.times_voted == 0 #not in STATS constant
         assert user.total_votes_received == 0 #not in STATS constant
         assert user.total_feedbacks_received == 23
@@ -82,7 +82,7 @@ class TestUserService:
         assert user.total_submissions == 3
         assert user.total_feedbacks_given == 5
         assert user.total_challenges_won == 12
-        assert user.total_feedback_words == 23
+        assert user.total_feedback_words == 0 # Not in stats constant
         assert user.times_voted == 0 #not in STATS constant
         assert user.total_votes_received == 0 #not in STATS constant
         assert user.total_feedbacks_received == 21

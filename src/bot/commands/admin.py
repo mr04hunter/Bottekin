@@ -1,5 +1,5 @@
 import discord
-from discord import app_commands, Interaction, Member
+from discord import app_commands, Interaction, Member, NotFound
 from typing import List,TYPE_CHECKING
 from discord.ext.commands import Cog
 from bot.constants import STATS
@@ -52,14 +52,17 @@ class AdminGroup(app_commands.Group, name="admin", description="admin commands",
         if not user:
             await interaction.followup.send(content="User already does not exist in database", ephemeral=True)
             return
-        dc_user = await interaction.guild.fetch_member(converted_user_id)
+        try:
+            dc_user = await interaction.guild.fetch_member(converted_user_id)
+        except NotFound:
+            dc_user = None
 
         if dc_user:
             await interaction.followup.send(content=f"user_id:{user.id}\nusername:{user.display_name}\n**This user is still a member in this server and cannot be removed.**\n")
             return
         
         
-        view = ConfirmUserDelete(user=dc_user, admin_id=self.config.admin_id, delete_user_callback=self.services.user.delete_user)
+        view = ConfirmUserDelete(user=user, admin_id=self.config.admin_id, delete_user_callback=self.services.user.delete_user)
         await interaction.followup.send(view=view, ephemeral=True)
     
 

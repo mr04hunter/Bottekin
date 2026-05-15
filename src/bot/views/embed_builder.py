@@ -167,7 +167,7 @@ class EmbedBuilder:
         if challenge_stats.total_submissions == 0:
             return
         
-        description_text = (f"\n{display_name} participated in **{challenge_stats.total_submissions}**."
+        description_text = (f"\n{display_name} participated in **{challenge_stats.total_submissions}** "
         f"{"challenge" + self._check_plural(length=challenge_stats.total_submissions)}.\n")
 
         if challenge_stats.total_challenges_won != 0:
