@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Awaitable, Callable, TYPE_CHECKING
-from discord.ui import LayoutView, Container, TextDisplay, ActionRow, MediaGallery
+from discord.ui import LayoutView, Container, TextDisplay, ActionRow, MediaGallery, button, Button
 from discord import  Member, Message, MediaGalleryItem
 from discord import Interaction
 import discord
@@ -75,19 +75,32 @@ class QuoteView(LayoutView):
 
 
 
-class DeleteUserButton(discord.ui.Button):
-    def __init__(self, user:"User",admin_id, delete_user_callback:Callable[[int],Awaitable]):
-        super().__init__(
-                label="Delete User",
-                style=discord.ButtonStyle.danger
-            )
-        
+class SuccessUserDelete(LayoutView):
+    def __init__(self, *, timeout: float | None = 180, user:"User") -> None:
+        super().__init__(timeout=timeout)
+        self.user = user
+        self.container = Container(accent_color=discord.Colour.green())
+        self.text_display = TextDisplay(
+            content=f"user_id: {self.user.id}\nusername: {self.user.display_name}\nUser is successfully removed from database.", id=1
+        )
+
+        self.container.add_item(self.text_display)
+
+        self.add_item(self.container)
+
+
+
+class UserButtons(ActionRow):
+    def __init__(self, view:"ConfirmUserDelete", user: "User", admin_id: int, delete_callback:Callable[[int], Awaitable]) -> None:
+        super().__init__()
+        self._view = view
         self.user = user
         self.admin_id = admin_id
-        self.delete_user_callback = delete_user_callback
+        self.delete_user_callback = delete_callback
 
 
-    async def callback(self, interaction: Interaction):
+    @button(label="Delete User", style=discord.ButtonStyle.primary, disabled=True)
+    async def delete_user_confirm(self, interaction: Interaction, button: Button) -> None:
         if interaction.user.id != self.admin_id:
             await interaction.response.send_message(
                 "You can't interact with this message.", ephemeral=True
@@ -98,34 +111,30 @@ class DeleteUserButton(discord.ui.Button):
             if interaction.message:
                 await interaction.response.defer(ephemeral=True)
                 await self.delete_user_callback(self.user.id)
-                await interaction.edit_original_response(content=f"user_id: {self.user.id}\nusername: {self.user.display_name}\nUser is successfully removed from database.")
+                success_view = SuccessUserDelete(user=self.user)
+                await interaction.edit_original_response(view=success_view)
 
 
         except Exception as e:
             logger.error(f"error: {e}")
 
-
-
-class UserButtons(ActionRow):
-    def __init__(self, user: "User", admin_id: int, delete_callback:Callable[[int], Awaitable]) -> None:
-        super().__init__()
-        self.add_item(DeleteUserButton(user=user, admin_id=admin_id, delete_user_callback=delete_callback))
-
+        
 
 class ConfirmUserDelete(LayoutView):
     def __init__(self, *, timeout: float | None = 180, user:"User", admin_id:int, delete_user_callback: Callable[[int], Awaitable]) -> None:
         super().__init__(timeout=timeout)
         self.user = user
         self.admin_id = admin_id
-        self.container = Container()
-        self.buttons = UserButtons(user=self.user, admin_id=self.admin_id, delete_callback=delete_user_callback)
+        
+        self.buttons = UserButtons(view=self, user=self.user, admin_id=self.admin_id, delete_callback=delete_user_callback)
+        self.title_display: TextDisplay = TextDisplay(content=f"*# WARNING\n")
+        self.user_display: TextDisplay = TextDisplay(content=f"user_id: {self.user.id}\ndisplay_name: {self.user.display_name}\n")
         self.text_display = TextDisplay(
-            content=f"# WARNING\nuser_id: {self.user.id}\ndisplay_name: {self.user.display_name}\nConfirm this user will be removed from the database", id=1
+            content=f"Confirm this user will be removed from the database", id=1
         )
+        self.container = Container(self.title_display, self.user_display, self.text_display, self.buttons, accent_colour=discord.Colour.red())
 
-        self.container.add_item(self.text_display)
-        self.container.add_item(self.buttons)
-
+        
         self.add_item(self.container)
 
 class HelpView(LayoutView):
