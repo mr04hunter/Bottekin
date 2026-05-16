@@ -300,6 +300,31 @@ async def seeded_monthly_challenge(uow, seeded_monthly_challenge_data):
 
 
 @pytest.fixture
+async def seeded_empty_challenge(mock_bot,
+    uow,
+
+    make_challenge_data,
+
+    ):
+    challenge_message = make_message(id=12345, embeds=[MagicMock(spec=Embed)])
+    challenge_info_channel = make_text_channel(id=111, messages=[challenge_message])
+
+    challenge_data = make_challenge_data(
+            id=challenge_message.id,
+            title="test_sync_challenge_data_title",
+            description="test_sync_challenge_data_description",
+            is_ongoing_voting=True,
+            is_active=True,
+            starts_at=datetime(year=2026, month=3, day=10, tzinfo=UTC),
+            ends_at=datetime(year=2026, month=3, day=20, tzinfo=UTC),
+            type="official"
+        )
+    challenge = await uow.challenges.create_or_update(data=challenge_data)
+    return challenge
+    
+
+
+@pytest.fixture
 async def seeded_challenge(
     mock_bot,
     uow,
@@ -451,7 +476,6 @@ async def seeded_threads():
         feedback_messages: list,
         track_messages: list ,   
         page_size: int = 100):
-
         threads = []
         for message in track_messages:
             thread_feedbacks = [

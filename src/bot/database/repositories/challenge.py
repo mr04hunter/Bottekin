@@ -255,19 +255,44 @@ class ChallengeRepository(BaseRepository):
 
     async def bulk_insert_submissions(self, submissions: list[dict]) -> list | None:
         async with self.get_session() as session:
-            try:
-                stmt = insert(Submission).values(submissions)
-                stmt = stmt.on_conflict_do_update(
-                    index_elements=["id"],
-                    set_={"title": stmt.excluded.title, "edited_at": stmt.excluded.edited_at}
-                ).returning(Submission)
-                result = await session.execute(stmt)
-                await session.flush()
 
-                return list(result.scalars().all())
-            except IntegrityError:
-                await session.rollback()
+            if self._bound_session is not None:
+                inserted = []
+                for submission in submissions:
+                    try:
+                        async with session.begin_nested():
+                            single_stmt = insert(Submission).values([submission])
+                            single_stmt = single_stmt.on_conflict_do_update(
+                                index_elements=["id"],
+                                set_={"title": single_stmt.excluded.title, "edited_at": single_stmt.excluded.edited_at}
+                            ).returning(Submission)
+                            result = await session.execute(single_stmt)
+        
+                            inserted.extend(result.scalars().all())
+                    except IntegrityError:
+                        logger.warning(
+                        f"Skipping submission id={submission['id']} "
+                        f"author_id={submission['author_id']} "
+                        f"challenge_id={submission['challenge_id']} "
+                        f"— user no longer exists or duplicate challenge/author pair"
+                        )
 
+                return inserted     
+            else:
+                try:           
+                    stmt = insert(Submission).values(submissions)
+                    stmt = stmt.on_conflict_do_update(
+                        index_elements=["id"],
+                        set_={"title": stmt.excluded.title, "edited_at": stmt.excluded.edited_at}
+                    ).returning(Submission)
+                    result = await session.execute(stmt)
+                    await session.flush()
+
+                    return list(result.scalars().all())
+                except IntegrityError:
+                    await session.rollback()
+
+        
         inserted = []
         for submission in submissions:
             try:
@@ -278,7 +303,7 @@ class ChallengeRepository(BaseRepository):
                         set_={"title": single_stmt.excluded.title, "edited_at": single_stmt.excluded.edited_at}
                     ).returning(Submission)
                     result = await retry_session.execute(single_stmt)
- 
+
                     inserted.extend(result.scalars().all())
             except BotDatabaseException:
                 logger.warning(
@@ -293,35 +318,60 @@ class ChallengeRepository(BaseRepository):
 
     async def bulk_insert_monthly_submissions(self, submissions: list[dict]) -> list | None:
         async with self.get_session() as session:
-            try:
-                updated_submissions = [submission for submission in submissions if submission.get("edited_at") is not None]
-                new_submissions = [submission for submission in submissions if submission.get("edited_at") is None]
+            if self._bound_session is not None:
+                    inserted = []
+                    for submission in submissions:
+                        index_elements_value = ["challenge_id", "author_id", "thread_id"] if submission.get("edited_at") is None else ["id"]
+                        try:
+                            async with session.begin_nested():
+                                single_stmt = insert(MonthlySubmission).values([submission])
+                                single_stmt = single_stmt.on_conflict_do_update(
+                                    index_elements=index_elements_value,
+                                    set_={"id":single_stmt.excluded.id, "title": single_stmt.excluded.title, "edited_at": single_stmt.excluded.edited_at}
+                                    ).returning(MonthlySubmission)
+                                result = await session.execute(single_stmt)
 
-                added_submissions = []
+                                inserted.extend(result.scalars().all())
+                        except IntegrityError:
+                            logger.warning(
+                                f"Skipping submission id={submission['id']} "
+                                f"author_id={submission['author_id']} — user no longer exists"
+                            )
 
-                if new_submissions:
-                    stmt = insert(MonthlySubmission).values(new_submissions)
-                    stmt = stmt.on_conflict_do_update(
-                        index_elements=["challenge_id", "author_id", "thread_id"],
-                        set_={"id":stmt.excluded.id, "title": stmt.excluded.title, "edited_at": stmt.excluded.edited_at}
-                    ).returning(MonthlySubmission)
-                    result = await session.execute(stmt)
-                    await session.flush()
-                    added_submissions.extend(result.scalars().all())
-                
-                if updated_submissions:
-                    stmt = insert(MonthlySubmission).values(updated_submissions)
-                    stmt = stmt.on_conflict_do_update(
-                        index_elements=["id"],
-                        set_={"id":stmt.excluded.id, "title": stmt.excluded.title, "edited_at": stmt.excluded.edited_at}
-                    ).returning(MonthlySubmission)
-                    result = await session.execute(stmt)
-                    await session.flush()
-                    added_submissions.extend(result.scalars().all())
+                    return inserted
+            
+            else:
+                try:
+                    updated_submissions = [submission for submission in submissions if submission.get("edited_at") is not None]
+                    new_submissions = [submission for submission in submissions if submission.get("edited_at") is None]
 
-                return added_submissions
-            except IntegrityError:
-                await session.rollback()
+                    added_submissions = []
+
+                    if new_submissions:
+                        stmt = insert(MonthlySubmission).values(new_submissions)
+                        stmt = stmt.on_conflict_do_update(
+                            index_elements=["challenge_id", "author_id", "thread_id"],
+                            set_={"id":stmt.excluded.id, "title": stmt.excluded.title, "edited_at": stmt.excluded.edited_at}
+                        ).returning(MonthlySubmission)
+                        result = await session.execute(stmt)
+                        await session.flush()
+                        added_submissions.extend(result.scalars().all())
+                    
+                    if updated_submissions:
+                        stmt = insert(MonthlySubmission).values(updated_submissions)
+                        stmt = stmt.on_conflict_do_update(
+                            index_elements=["id"],
+                            set_={"id":stmt.excluded.id, "title": stmt.excluded.title, "edited_at": stmt.excluded.edited_at}
+                        ).returning(MonthlySubmission)
+                        result = await session.execute(stmt)
+                        await session.flush()
+                        added_submissions.extend(result.scalars().all())
+
+                    return added_submissions
+                except IntegrityError:
+                    await session.rollback()
+
+       
         inserted = []
         for submission in submissions:
             index_elements_value = ["challenge_id", "author_id", "thread_id"] if submission.get("edited_at") is None else ["id"]
@@ -377,27 +427,53 @@ class ChallengeRepository(BaseRepository):
             result = await session.execute(select(Winner.submission_id).where(Winner.submission_id.in_(submission_ids)))
             existing_winners = result.scalars().all()
             new_winners = [winner for winner in winners if winner.submission_id not in existing_winners]
-
             if not new_winners:
                 return
+            if self._bound_session is not None:
+                for winner in new_winners:
+                    try:
+                        async with session.begin_nested():
+                            
+                            session.add(Winner(
+                                winner_id=winner.winner_id,
+                                submission_id=winner.submission_id,
+                                challenge_id=winner.challenge_id
+                            ))
+                    except IntegrityError:
+                        logger.warning(
+                            f"Skipping winner winner_id={winner.winner_id} "
+                            f"submission_id={winner.submission_id} "
+                            f"challenge_id={winner.challenge_id} — user or submission no longer exists")
+                        
+                            
+            else:
+                if not new_winners:
+                    return
 
-            try:
-                session.add_all(new_winners)
-                await session.flush()
-                return
-            except IntegrityError:
-                await session.rollback()
+                try:
+                    session.add_all(new_winners)
+                    await session.flush()
+                    return
+                except IntegrityError:
+                    await session.rollback()
+        if self._bound_session is None:
 
-        for winner in new_winners:
-            try:
-                async with self.get_session() as retry_session:
-                    retry_session.add(winner)
-            except BotDatabaseException:
-                logger.warning(
-                    f"Skipping winner winner_id={winner.winner_id} "
-                    f"submission_id={winner.submission_id} "
-                    f"challenge_id={winner.challenge_id} — user or submission no longer exists"
-                )
+            for winner in new_winners:
+                try:
+                    async with self.get_session() as retry_session:
+                        
+
+                        retry_session.add(Winner(
+                        winner_id=winner.winner_id,
+                        submission_id=winner.submission_id,
+                        challenge_id=winner.challenge_id
+                    ))
+                except BotDatabaseException:
+                    logger.warning(
+                        f"Skipping winner winner_id={winner.winner_id} "
+                        f"submission_id={winner.submission_id} "
+                        f"challenge_id={winner.challenge_id} — user or submission no longer exists"
+                    )
 
 
 

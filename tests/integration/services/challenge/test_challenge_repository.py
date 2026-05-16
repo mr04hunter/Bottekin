@@ -150,6 +150,11 @@ class TestChallengeRepository:
 
             assert await uow.challenges.get_submission(552) is None
 
+
+
+
+    
+
     async def test_bulk_insert_updates_submissions(
             self, uow, seeded_users, seeded_challenge, seeded_submissions
     ):
@@ -574,8 +579,8 @@ class TestChallengeRepository:
             "challenge_id":seeded_monthly_challenge.id,
             "title":"submission3",
             "created_at":datetime(year=2026, month=3, day=3, tzinfo=UTC)}
-        
-        await uow.challenges.bulk_insert_monthly_submissions([submission1, submission2, submission3, submission4])
+        async with uow.transaction() as t:
+            await t.challenges.bulk_insert_monthly_submissions([submission1, submission2, submission3, submission4])
 
         submission1_db = await uow.challenges.get_monthly_submission(555)
         submission2_db = await uow.challenges.get_monthly_submission(554)

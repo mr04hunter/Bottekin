@@ -186,6 +186,7 @@ def background_task(
                 severity=ErrorSeverity.HIGH,
                 context={"operation": name, "exception_type": type(e).__name__},
             )
+                print(f"ERRORRRR {str(e)}")
                 await _observe(bot_exc, name) 
                 return None
         return wrapper

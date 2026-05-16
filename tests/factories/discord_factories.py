@@ -373,7 +373,7 @@ def make_feedback_message(
     author: MagicMock,
     channel_id: int,
     channel_parent_id:int,
-    message_id: int | None = None,
+    message_id: int | None,
 ) -> MagicMock:
     mid = message_id or random.randint(100_000_000, 999_999_999)
     msg = MagicMock(spec=discord.Message)

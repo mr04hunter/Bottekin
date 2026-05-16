@@ -1,7 +1,7 @@
 import pytest
 from bot.services.sync_services.feedback import FeedbackSyncService
 from unittest.mock import AsyncMock, MagicMock
-from tests.factories.discord_factories import make_text_channel
+from tests.factories.discord_factories import make_feedback_message, make_member, make_message, make_text_channel, make_thread
 
 class TestFeedbackSyncService:
     @pytest.fixture
@@ -31,6 +31,57 @@ class TestFeedbackSyncService:
             assert feedback.content == feedback_message.content
             assert feedback.channel_id == 111
             assert feedback.thread_id == feedback_message.channel.id
+
+
+    async def test_feedback_sync_integrity_error_retry(
+            self, service, uow,seeded_members, seeded_track_messages, seeded_threads, make_feedback_messages
+    ):
+        nonexistent_author2 = make_member(id=12344, bot=False, display_name="nonexistent_author")
+        nonexistent_author3 = make_member(id=12347, bot=False, display_name="nonexistent_author")
+        nonexistent_author4 = make_member(id=12346, bot=False, display_name="nonexistent_author")
+
+
+        
+
+        feedback1 = make_feedback_message(
+            content="i liked it nice music",
+            author=seeded_members.user1, 
+            channel_id=seeded_track_messages.all[0].id, 
+            channel_parent_id=seeded_track_messages.all[0].channel.id,
+            message_id=123456)
+        
+        feedback2 = make_feedback_message(
+            content="i liked it nice music",
+            author=nonexistent_author2, 
+            channel_id=seeded_track_messages.all[0].id, 
+            channel_parent_id=seeded_track_messages.all[0].channel.id,
+            message_id=123456756757)
+        
+        feedback3 = make_feedback_message(
+            content="i liked it nice music",
+            author=nonexistent_author3, 
+            channel_id=seeded_track_messages.all[0].id, 
+            channel_parent_id=seeded_track_messages.all[0].channel.id,
+            message_id=123456776868)
+        
+        feedback4 = make_feedback_message(
+            content="i liked it nice music",
+            author=nonexistent_author4, 
+            channel_id=seeded_track_messages.all[0].id, 
+            channel_parent_id=seeded_track_messages.all[0].channel.id,
+            message_id=1234567768)
+        
+        thread = make_thread(owner_id=seeded_track_messages.all[0].author.id, id=765684563363456, parent_id=seeded_track_messages.all[0].channel.id, messages=[feedback1, feedback2, feedback3, feedback4])
+        channel = make_text_channel(id=4354767454365, messages=seeded_track_messages.all, threads=[thread])
+
+        existing_user_ids = seeded_members.all_ids
+        existing_user_ids.append(12344)
+        existing_user_ids.append(12347)
+        existing_user_ids.append(12346)
+
+        await service.sync_channel(channel=channel, author_track_ids=seeded_track_messages.author_track_ids, existing_user_ids=existing_user_ids)
+        total_feedbacks = await uow.feedback.get_total_feedbacks()
+        assert total_feedbacks == 1
 
     async def test_duplicate_feedback_sync(
             self, service, uow,seeded_members, seeded_track_messages, seeded_threads, make_feedback_messages

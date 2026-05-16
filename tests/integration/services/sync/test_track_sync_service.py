@@ -1,7 +1,7 @@
 import pytest
 from bot.services.sync_services.track import TrackSyncService
 from unittest.mock import AsyncMock, MagicMock
-from tests.factories.discord_factories import make_text_channel
+from tests.factories.discord_factories import make_text_channel, make_track_message
 
 class TestTrackSyncService:
     @pytest.fixture
@@ -36,6 +36,35 @@ class TestTrackSyncService:
             assert track.channel_id == message.channel.id
 
         assert await uow.tracks.get_total_tracks_in_db() == len(messages)
+
+
+
+    async def test_sync_bulk_insert_integrit_error_retry(
+            self,service, uow, seeded_members, make_track_messages
+    ):
+        
+        message1 = make_track_message(author=seeded_members.user1, channel_id=12345, message_id=7658768567)
+        message2 = make_track_message(author=MagicMock(id=123456435546789), channel_id=12345, message_id=765876537768567)
+        message3 = make_track_message(author=MagicMock(id=123434556789), channel_id=12345, message_id=76583456368567)
+        message4 = make_track_message(author=MagicMock(id=123456734589), channel_id=12345, message_id=7658435546768567)
+        message5 = make_track_message(author=MagicMock(id=123456745689), channel_id=12345, message_id=7658768657467567)
+        messages = [message1, message2, message3, message4, message5]
+        channel = make_text_channel(
+            id=111, 
+            messages=messages, 
+            page_size=100
+        )
+        existing_user_ids = {*seeded_members.all_ids,123456435546789, 123434556789, 123456734589, 123456745689}
+
+        author_track_ids = await service.sync_channel(channel=channel, existing_user_ids=existing_user_ids)
+
+        assert set(author_track_ids.keys()) == {m.id for m in messages}
+        assert set(author_track_ids.values()) == {m.author.id for m in messages}
+
+
+       
+
+        assert await uow.tracks.get_total_tracks_in_db() == 1
 
     async def test_sync_cleanup(
             self,service, uow, seeded_members, seeded_track_messages

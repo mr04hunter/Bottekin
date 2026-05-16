@@ -70,7 +70,6 @@ class TestStatsService:
 
         fields = embed.get("fields")
         top_supported_authors, = fields
-        print(f"fields {fields}")
         top_supported_authors_val = top_supported_authors.get("value")
 
         top_supported_authors = seeded_stats.top_supported_members(user.id)

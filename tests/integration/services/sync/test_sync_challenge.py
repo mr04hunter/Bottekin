@@ -130,6 +130,23 @@ class TestChallengeSyncService:
         for message in seeded_challenge.submission_messages:
             assert await uow.challenges.get_submission(message.id) is not None
 
+
+    async def test_sync_submissions_integrity_error_retry(
+            self, service, uow, seeded_members, seeded_empty_challenge, test_config
+    ):
+        submission1 = make_submission_message(id=12312432423, author=MagicMock(id=seeded_members.user1.id), channel_id=test_config.official_submission_channel_id, created_at=datetime(year=2026, month=3, day=11, tzinfo=UTC))
+        submission2 = make_submission_message(id=12312345432423, author=MagicMock(id=123432534563453), channel_id=test_config.official_submission_channel_id, created_at=datetime(year=2026, month=3, day=11, tzinfo=UTC))
+        submission3 = make_submission_message(id=123124354352423, author=MagicMock(id=123432534564563453), channel_id=test_config.official_submission_channel_id, created_at=datetime(year=2026, month=3, day=11, tzinfo=UTC))
+
+        channel = make_text_channel(id=test_config.official_submission_channel_id, messages=[submission1, submission2, submission3])
+
+        await service.sync_data(channel, seeded_empty_challenge, {seeded_members.user1.id, 123432534563453, 123432534564563453})
+
+        assert await uow.challenges.get_submission(12312345432423) is None
+        assert await uow.challenges.get_submission(123124354352423) is None
+        assert await uow.challenges.get_submission(12312432423) is not None
+
+
     async def test_sync_submissions_multiple_paged_channel(
             self, service, uow, seeded_challenge
     ):
@@ -231,6 +248,37 @@ class TestChallengeSyncService:
 
         assert db_winner_submission.winner_declared == True
         assert await uow.challenges.get_winner(winner_submission.author.id, winner_submission.id, seeded_challenge.challenge.id) is not None
+
+
+    async def test_sync_winners_integrity_error_retry(
+            self, service, uow, seeded_members, seeded_empty_challenge, test_config
+    ):
+        
+        submission1 = make_submission_message(id=12312432423, author=MagicMock(id=seeded_members.user1.id), channel_id=test_config.official_submission_channel_id, created_at=datetime(year=2026, month=3, day=11, tzinfo=UTC))
+        submission2 = make_submission_message(id=12312345, author=MagicMock(id=123432534563453), channel_id=test_config.official_submission_channel_id, created_at=datetime(year=2026, month=3, day=15, tzinfo=UTC))
+        
+
+
+
+        winner_submission = submission1
+        reaction = make_reaction(emoji="🏆", users=[MagicMock(id=test_config.admin_id)])
+
+        winner_submission.reactions = [reaction]
+
+        winner_submission2 = submission2
+        reaction2 = make_reaction(emoji="🏆", users=[MagicMock(id=test_config.admin_id)])
+
+        winner_submission2.reactions = [reaction2]
+        channel = make_text_channel(id=test_config.official_submission_channel_id, messages=[winner_submission2, winner_submission])
+        await service.sync_data(channel, seeded_empty_challenge, {seeded_members.user1.id, 123432534563453, 123432534564563453})
+
+        db_winner_submission = await uow.challenges.get_submission(winner_submission.id)
+        db_invalid_winner_submission = await uow.challenges.get_submission(winner_submission2.id)
+
+        assert db_invalid_winner_submission is None
+        assert db_winner_submission.winner_declared == True
+        assert await uow.challenges.get_winner(winner_submission.author.id, winner_submission.id, seeded_empty_challenge.id) is not None
+        assert await uow.challenges.get_winner(winner_submission2.author.id, winner_submission2.id, seeded_empty_challenge.id) is None
 
     async def test_nonexistent_winner_not_inserted(
             self, service, uow, seeded_challenge, test_config

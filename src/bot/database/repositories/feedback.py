@@ -1,4 +1,5 @@
 from datetime import datetime
+from asyncpg import ForeignKeyViolationError
 from sqlalchemy import distinct, func, select, update, delete, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.postgresql import insert
@@ -125,18 +126,35 @@ class FeedbackRepository(BaseRepository):
     @log_function
     async def bulk_update_relations(self, feedback_track_data:list[dict]) -> None:
         async with self.get_session() as session:
-            try:
-                stmt = insert(user_tracks).values(feedback_track_data)
-                stmt = stmt.on_conflict_do_update(index_elements=["feedback_id", "user_id", "track_id"],set_={
-                    "user_id":stmt.excluded.user_id,
-                    "feedback_id":stmt.excluded.feedback_id,
-                    "track_id":stmt.excluded.track_id
-                })
+            if self._bound_session is not None:
+                for data in feedback_track_data:
+                    try:
+                        async with session.begin_nested():
+                            single_stmt = insert(user_tracks).values([data])
+                            single_stmt = single_stmt.on_conflict_do_update(
+                            index_elements=["feedback_id", "user_id", "track_id"],
+                            set_={
+                            "user_id":single_stmt.excluded.user_id,
+                            "feedback_id":single_stmt.excluded.feedback_id,
+                            "track_id":single_stmt.excluded.track_id
+                            })
+                            await session.execute(single_stmt)
+                    except IntegrityError:
+                        logger.warning(f"Skipping feedback relation data {data['feedback_id']}, track_id {data['track_id']} user_id {data["user_id"]} no longer exists")
+            else:
+                try:
+                    stmt = insert(user_tracks).values(feedback_track_data)
+                    stmt = stmt.on_conflict_do_update(index_elements=["feedback_id", "user_id", "track_id"],set_={
+                        "user_id":stmt.excluded.user_id,
+                        "feedback_id":stmt.excluded.feedback_id,
+                        "track_id":stmt.excluded.track_id
+                    })
 
-                await session.execute(stmt)
-                await session.flush()
-            except IntegrityError:
-                await session.rollback()
+                    await session.execute(stmt)
+                    await session.flush()
+                except IntegrityError:
+                    await session.rollback()
+            
 
         for data in feedback_track_data:
             try:
@@ -173,28 +191,47 @@ class FeedbackRepository(BaseRepository):
     @log_function
     async def bulk_insert_feedback(self, feedbacks: list[dict]) -> list | None:
         async with self.get_session() as session:
+            if self._bound_session is not None:
+                inserted = []
+                for feedback in feedbacks:
+                    try:
+                        async with session.begin_nested():
+                            single_stmt = insert(Feedback).values([feedback])
+                            single_stmt = single_stmt.on_conflict_do_update(
+                                index_elements=["id"],
+                                set_={
+                                    "content": single_stmt.excluded.content,
+                                    "word_count": single_stmt.excluded.word_count,
+                                    "created_at": single_stmt.excluded.created_at,
+                                    "edited_at": single_stmt.excluded.edited_at,
+                                    "channel_id": single_stmt.excluded.channel_id,
+                                }).returning(Feedback)
+                            result = await session.execute(single_stmt)
+                            inserted.extend(result.scalars().all())
+                    except IntegrityError:
+                        logger.warning(
+                            f"Skipping feedback {feedback['id']}, "
+                            f"user {feedback['author_id']} no longer exists"
+                        )
+                return inserted
+
             try:
                 stmt = insert(Feedback).values(feedbacks)
                 stmt = stmt.on_conflict_do_update(
-                index_elements=["id"],
-                set_={
-                "content": stmt.excluded.content,
-                "word_count": stmt.excluded.word_count,
-                "created_at": stmt.excluded.created_at,
-                "edited_at": stmt.excluded.edited_at,
-                "channel_id": stmt.excluded.channel_id,
-
-                }).returning(Feedback)
-
-            
-
+                    index_elements=["id"],
+                    set_={
+                        "content": stmt.excluded.content,
+                        "word_count": stmt.excluded.word_count,
+                        "created_at": stmt.excluded.created_at,
+                        "edited_at": stmt.excluded.edited_at,
+                        "channel_id": stmt.excluded.channel_id,
+                    }).returning(Feedback)
                 result = await session.execute(stmt)
                 await session.flush()
-
                 return list(result.scalars().all())
             except IntegrityError:
                 await session.rollback()
-            
+
         inserted = []
         for feedback in feedbacks:
             try:
@@ -211,13 +248,11 @@ class FeedbackRepository(BaseRepository):
                         }).returning(Feedback)
                     result = await retry_session.execute(single_stmt)
                     inserted.extend(result.scalars().all())
-
             except BotDatabaseException:
                 logger.warning(
                     f"Skipping feedback {feedback['id']}, "
                     f"user {feedback['author_id']} no longer exists"
                 )
-                continue
         return inserted
 
     async def get_total_feedbacks(self):
