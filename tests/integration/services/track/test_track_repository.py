@@ -77,6 +77,63 @@ class TestTrackRepository:
 
 
 
+    async def test_bulk_insert_tracks_integrity_error_retry(
+            self, uow, seeded_users
+    ):
+        created_at = datetime(year=2026, month=1, day=12, tzinfo=UTC)
+        track1 = {
+            "id":555,
+            "author_id":seeded_users.track_author1.id,
+            "thread_id":555,
+            "channel_id":111,
+            "title":"title1",
+            "platform":"platform1",
+            "created_at":created_at}
+        
+        track2 = {
+            "id":554,
+            "author_id":seeded_users.track_author1.id,
+            "thread_id":554,
+            "channel_id":111,
+            "title":"title1",
+            "platform":"platform1",
+            "created_at":created_at}
+        
+        track3 = {
+            "id":553,
+            "author_id":seeded_users.track_author1.id,
+            "thread_id":553,
+            "channel_id":111,
+            "title":"title1",
+            "platform":"platform1",
+            "created_at":created_at}
+        
+        track4 = {
+            "id":552,
+            "author_id":324535346345345,
+            "thread_id":553,
+            "channel_id":111,
+            "title":"title1",
+            "platform":"platform1",
+            "created_at":created_at}
+        
+        
+        await uow.tracks.bulk_insert_track([track1, track2, track3, track4])
+
+        exists = await uow.tracks.exists(555)
+        assert exists == True
+
+        exists2 = await uow.tracks.exists(554)
+        assert exists2 == True
+
+        exists3 = await uow.tracks.exists(553)
+        assert exists3 == True
+
+        exists4 = await uow.tracks.exists(552)
+        assert exists4 == False
+        
+
+
     async def test_cleanup_tracks(
             self, uow, seeded_tracks
     ):

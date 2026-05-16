@@ -41,7 +41,7 @@ class TestChallengeRepository:
                 "author_id":seeded_users.submission_author2.id,
                 "channel_id":111,
                 "challenge_id":seeded_challenge.id,
-                "title":"submission1",
+                "title":"submission2",
                 "created_at":datetime(year=2026, month=3, day=3, tzinfo=UTC)}
             
             submission3 = {
@@ -49,13 +49,106 @@ class TestChallengeRepository:
                 "author_id":seeded_users.submission_author3.id,
                 "channel_id":111,
                 "challenge_id":seeded_challenge.id,
-                "title":"submission1",
+                "title":"submission3",
                 "created_at":datetime(year=2026, month=3, day=3, tzinfo=UTC)}
 
             await uow.challenges.bulk_insert_submissions([submission1, submission2, submission3])
-            assert await uow.challenges.get_submission(555) is not None
-            assert await uow.challenges.get_submission(554) is not None
-            assert await uow.challenges.get_submission(553) is not None
+            submission1_db = await uow.challenges.get_submission(555)
+            assert submission1_db is not None
+            assert submission1_db.id == 555
+            assert submission1_db.author_id == seeded_users.submission_author1.id
+            assert submission1_db.challenge_id == seeded_challenge.id
+            assert submission1_db.channel_id == 111
+            assert submission1_db.title == "submission1"
+            assert submission1_db.created_at == datetime(year=2026, month=3, day=3, tzinfo=UTC)
+
+            submission2_db = await uow.challenges.get_submission(554)
+            assert submission2_db is not None
+            assert submission2_db.id == 554
+            assert submission2_db.author_id == seeded_users.submission_author2.id
+            assert submission2_db.challenge_id == seeded_challenge.id
+            assert submission2_db.channel_id == 111
+            assert submission2_db.title == "submission2"
+            assert submission2_db.created_at == datetime(year=2026, month=3, day=3, tzinfo=UTC)
+            
+            submission3_db = await uow.challenges.get_submission(553)
+            assert submission3_db is not None
+            assert submission3_db.id == 553
+            assert submission3_db.author_id == seeded_users.submission_author3.id
+            assert submission3_db.challenge_id == seeded_challenge.id
+            assert submission3_db.channel_id == 111
+            assert submission3_db.title == "submission3"
+            assert submission3_db.created_at == datetime(year=2026, month=3, day=3, tzinfo=UTC)
+
+
+
+    async def test_bulk_insert_submissions_integrity_error_retry(
+                self, uow, seeded_users, seeded_challenge
+        ):
+            submission1 = {
+                "id":555,
+                "author_id":seeded_users.submission_author1.id,
+                "channel_id":111,
+                "challenge_id":seeded_challenge.id,
+                "title":"submission1",
+                "created_at":datetime(year=2026, month=3, day=3, tzinfo=UTC)}
+            
+
+
+
+            submission2 = {
+                "id":554,
+                "author_id":seeded_users.submission_author2.id,
+                "channel_id":111,
+                "challenge_id":seeded_challenge.id,
+                "title":"submission2",
+                "created_at":datetime(year=2026, month=3, day=3, tzinfo=UTC)}
+            
+            submission3 = {
+                "id":553,
+                "author_id":seeded_users.submission_author3.id,
+                "channel_id":111,
+                "challenge_id":seeded_challenge.id,
+                "title":"submission3",
+                "created_at":datetime(year=2026, month=3, day=3, tzinfo=UTC)}
+            
+            submission4 = {
+                "id":552,
+                "author_id":3454654645745,
+                "channel_id":111,
+                "challenge_id":seeded_challenge.id,
+                "title":"submission4",
+                "created_at":datetime(year=2026, month=3, day=3, tzinfo=UTC)}
+
+            await uow.challenges.bulk_insert_submissions([submission1, submission2, submission3, submission4])
+            submission1_db = await uow.challenges.get_submission(555)
+            assert submission1_db is not None
+            assert submission1_db.id == 555
+            assert submission1_db.author_id == seeded_users.submission_author1.id
+            assert submission1_db.challenge_id == seeded_challenge.id
+            assert submission1_db.channel_id == 111
+            assert submission1_db.title == "submission1"
+            assert submission1_db.created_at == datetime(year=2026, month=3, day=3, tzinfo=UTC)
+
+            submission2_db = await uow.challenges.get_submission(554)
+            assert submission2_db is not None
+            assert submission2_db.id == 554
+            assert submission2_db.author_id == seeded_users.submission_author2.id
+            assert submission2_db.challenge_id == seeded_challenge.id
+            assert submission2_db.channel_id == 111
+            assert submission2_db.title == "submission2"
+            assert submission2_db.created_at == datetime(year=2026, month=3, day=3, tzinfo=UTC)
+            
+            submission3_db = await uow.challenges.get_submission(553)
+            assert submission3_db is not None
+            assert submission3_db.id == 553
+            assert submission3_db.author_id == seeded_users.submission_author3.id
+            assert submission3_db.challenge_id == seeded_challenge.id
+            assert submission3_db.channel_id == 111
+            assert submission3_db.title == "submission3"
+            assert submission3_db.created_at == datetime(year=2026, month=3, day=3, tzinfo=UTC)
+
+            assert await uow.challenges.get_submission(552) is None
 
     async def test_bulk_insert_updates_submissions(
             self, uow, seeded_users, seeded_challenge, seeded_submissions
@@ -158,9 +251,73 @@ class TestChallengeRepository:
 
         await uow.challenges.bulk_insert_winners({Winner(**winner1), Winner(**winner2), Winner(**winner3)})
 
-        assert await uow.challenges.get_winner(seeded_users.submission_author1.id,seeded_submissions.submission1.id,seeded_challenge.id) is not None
-        assert await uow.challenges.get_winner(seeded_users.submission_author2.id,seeded_submissions.submission2.id, seeded_challenge.id) is not None
-        assert await uow.challenges.get_winner(seeded_users.submission_author3.id,seeded_submissions.submission3.id, seeded_challenge.id) is not None
+        winner1_db = await uow.challenges.get_winner(seeded_users.submission_author1.id,seeded_submissions.submission1.id,seeded_challenge.id)
+        assert winner1_db is not None
+        assert winner1_db.submission_id == seeded_submissions.submission1.id
+        assert winner1_db.challenge_id == seeded_challenge.id
+        assert winner1_db.winner_id == seeded_users.submission_author1.id
+
+        winner2_db = await uow.challenges.get_winner(seeded_users.submission_author2.id,seeded_submissions.submission2.id, seeded_challenge.id)
+        assert winner2_db is not None
+        assert winner2_db.submission_id == seeded_submissions.submission2.id
+        assert winner2_db.challenge_id == seeded_challenge.id
+        assert winner2_db.winner_id == seeded_users.submission_author2.id
+
+        winner3_db = await uow.challenges.get_winner(seeded_users.submission_author3.id,seeded_submissions.submission3.id, seeded_challenge.id)
+        assert winner3_db is not None
+        assert winner3_db.submission_id == seeded_submissions.submission3.id
+        assert winner3_db.challenge_id == seeded_challenge.id
+        assert winner3_db.winner_id == seeded_users.submission_author3.id 
+
+
+    async def test_bulk_insert_winners_integrity_error_retry(
+            self, uow, seeded_users, seeded_challenge, seeded_submissions
+    ):
+        
+
+
+        winner1 =  {
+            "winner_id":seeded_users.submission_author1.id,
+            "submission_id":seeded_submissions.submission1.id,
+            "challenge_id":seeded_challenge.id}
+        
+        winner2 = {
+            "winner_id":seeded_users.submission_author2.id,
+            "submission_id":seeded_submissions.submission2.id,
+            "challenge_id":seeded_challenge.id}
+        winner3 = {
+            "winner_id":seeded_users.submission_author3.id,
+            "submission_id":seeded_submissions.submission3.id,
+            "challenge_id":seeded_challenge.id}
+        
+        winner4 = {
+            "winner_id":567657456,
+            "submission_id":56757567,
+            "challenge_id":seeded_challenge.id}
+        
+        
+
+        await uow.challenges.bulk_insert_winners({Winner(**winner1), Winner(**winner2), Winner(**winner3), Winner(**winner4)})
+
+        assert await uow.challenges.get_winner(567657456,56757567,seeded_challenge.id) is None
+
+        winner1_db = await uow.challenges.get_winner(seeded_users.submission_author1.id,seeded_submissions.submission1.id,seeded_challenge.id)
+        assert winner1_db is not None
+        assert winner1_db.submission_id == seeded_submissions.submission1.id
+        assert winner1_db.challenge_id == seeded_challenge.id
+        assert winner1_db.winner_id == seeded_users.submission_author1.id
+
+        winner2_db = await uow.challenges.get_winner(seeded_users.submission_author2.id,seeded_submissions.submission2.id, seeded_challenge.id)
+        assert winner2_db is not None
+        assert winner2_db.submission_id == seeded_submissions.submission2.id
+        assert winner2_db.challenge_id == seeded_challenge.id
+        assert winner2_db.winner_id == seeded_users.submission_author2.id
+
+        winner3_db = await uow.challenges.get_winner(seeded_users.submission_author3.id,seeded_submissions.submission3.id, seeded_challenge.id)
+        assert winner3_db is not None
+        assert winner3_db.submission_id == seeded_submissions.submission3.id
+        assert winner3_db.challenge_id == seeded_challenge.id
+        assert winner3_db.winner_id == seeded_users.submission_author3.id 
 
     async def test_duplicate_bulk_insert_winners(
             self, uow, seeded_users, seeded_challenge, seeded_submissions
@@ -361,6 +518,72 @@ class TestChallengeRepository:
         submission1_db = await uow.challenges.get_monthly_submission(555)
         submission2_db = await uow.challenges.get_monthly_submission(554)
         submission3_db = await uow.challenges.get_monthly_submission(553)
+
+        assert submission1_db.id == 555
+        assert submission1_db.title == "submission1"
+        assert submission1_db.author_id == seeded_users.submission_author1.id
+        assert submission1_db.challenge_id == seeded_monthly_challenge.id
+        assert submission1_db.thread_id == 111
+        assert submission1_db.created_at == datetime(year=2026, month=3, day=3, tzinfo=UTC)
+
+        assert submission2_db.id == 554
+        assert submission2_db.title == "submission2"
+        assert submission2_db.author_id == seeded_users.submission_author2.id
+        assert submission2_db.challenge_id == seeded_monthly_challenge.id
+        assert submission2_db.thread_id == 111
+        assert submission2_db.created_at == datetime(year=2026, month=3, day=3, tzinfo=UTC)
+
+        assert submission3_db.id == 553
+        assert submission3_db.title == "submission3"
+        assert submission3_db.author_id == seeded_users.submission_author3.id
+        assert submission3_db.challenge_id == seeded_monthly_challenge.id
+        assert submission3_db.thread_id == 111
+        assert submission3_db.created_at == datetime(year=2026, month=3, day=3, tzinfo=UTC)
+
+
+    async def test_bulk_insert_monthly_submissions_integrity_error_retry(self, uow, seeded_users, seeded_monthly_challenge):
+        submission1 = {
+            "id":555,
+            "author_id":seeded_users.submission_author1.id,
+            "thread_id":111,
+            "challenge_id":seeded_monthly_challenge.id,
+            "title":"submission1",
+            "created_at":datetime(year=2026, month=3, day=3, tzinfo=UTC)}
+
+
+        submission2 = {
+            "id":554,
+            "author_id":seeded_users.submission_author2.id,
+            "thread_id":111,
+            "challenge_id":seeded_monthly_challenge.id,
+            "title":"submission2",
+            "created_at":datetime(year=2026, month=3, day=3, tzinfo=UTC)}
+        
+        submission3 = {
+            "id":553,
+            "author_id":seeded_users.submission_author3.id,
+            "thread_id":111,
+            "challenge_id":seeded_monthly_challenge.id,
+            "title":"submission3",
+            "created_at":datetime(year=2026, month=3, day=3, tzinfo=UTC)}
+        
+        submission4 = {
+            "id":552,
+            "author_id":465756856564,
+            "thread_id":111,
+            "challenge_id":seeded_monthly_challenge.id,
+            "title":"submission3",
+            "created_at":datetime(year=2026, month=3, day=3, tzinfo=UTC)}
+        
+        await uow.challenges.bulk_insert_monthly_submissions([submission1, submission2, submission3, submission4])
+
+        submission1_db = await uow.challenges.get_monthly_submission(555)
+        submission2_db = await uow.challenges.get_monthly_submission(554)
+        submission3_db = await uow.challenges.get_monthly_submission(553)
+
+        submission4_db = await uow.challenges.get_monthly_submission(552)
+
+        assert submission4_db is None
 
         assert submission1_db.id == 555
         assert submission1_db.title == "submission1"

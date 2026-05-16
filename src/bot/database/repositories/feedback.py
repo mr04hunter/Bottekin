@@ -5,7 +5,8 @@ from sqlalchemy.dialects.postgresql import insert
 from bot.database.models import Feedback, Track, user_tracks
 from bot.database.repositories.base import BaseRepository
 from bot.logging import get_logger, log_function
-
+from sqlalchemy.exc import IntegrityError
+from bot.exceptions import BotDatabaseException
 logger = get_logger("feedback_repository")
 
 MIN_WORD_COUNT_FOR_DUPLICATE_CHECK = 15
@@ -124,14 +125,34 @@ class FeedbackRepository(BaseRepository):
     @log_function
     async def bulk_update_relations(self, feedback_track_data:list[dict]) -> None:
         async with self.get_session() as session:
-            stmt = insert(user_tracks).values(feedback_track_data)
-            stmt = stmt.on_conflict_do_update(index_elements=["feedback_id", "user_id", "track_id"],set_={
-                "user_id":stmt.excluded.user_id,
-                "feedback_id":stmt.excluded.feedback_id,
-                "track_id":stmt.excluded.track_id
-            })
+            try:
+                stmt = insert(user_tracks).values(feedback_track_data)
+                stmt = stmt.on_conflict_do_update(index_elements=["feedback_id", "user_id", "track_id"],set_={
+                    "user_id":stmt.excluded.user_id,
+                    "feedback_id":stmt.excluded.feedback_id,
+                    "track_id":stmt.excluded.track_id
+                })
 
-            await session.execute(stmt)
+                await session.execute(stmt)
+                await session.flush()
+            except IntegrityError:
+                await session.rollback()
+
+        for data in feedback_track_data:
+            try:
+                async with self.get_session() as retry_session:
+                    single_stmt = insert(user_tracks).values([data])
+                    single_stmt = single_stmt.on_conflict_do_update(
+                    index_elements=["feedback_id", "user_id", "track_id"],
+                    set_={
+                    "user_id":single_stmt.excluded.user_id,
+                    "feedback_id":single_stmt.excluded.feedback_id,
+                    "track_id":single_stmt.excluded.track_id
+                    })
+                    await retry_session.execute(single_stmt)
+            except BotDatabaseException:
+                logger.warning(f"Skipping feedback relation data {data['feedback_id']}, track_id {data['track_id']} user_id {data["user_id"]} no longer exists")
+
 
 
     @log_function
@@ -152,25 +173,52 @@ class FeedbackRepository(BaseRepository):
     @log_function
     async def bulk_insert_feedback(self, feedbacks: list[dict]) -> list | None:
         async with self.get_session() as session:
-        
-            stmt = insert(Feedback).values(feedbacks)
-            stmt = stmt.on_conflict_do_update(
-            index_elements=["id"],
-            set_={
-            "content": stmt.excluded.content,
-            "word_count": stmt.excluded.word_count,
-            "created_at": stmt.excluded.created_at,
-            "edited_at": stmt.excluded.edited_at,
-            "channel_id": stmt.excluded.channel_id,
+            try:
+                stmt = insert(Feedback).values(feedbacks)
+                stmt = stmt.on_conflict_do_update(
+                index_elements=["id"],
+                set_={
+                "content": stmt.excluded.content,
+                "word_count": stmt.excluded.word_count,
+                "created_at": stmt.excluded.created_at,
+                "edited_at": stmt.excluded.edited_at,
+                "channel_id": stmt.excluded.channel_id,
 
-            }).returning(Feedback)
+                }).returning(Feedback)
 
-           
+            
 
-            result = await session.execute(stmt)
-            await session.flush()
+                result = await session.execute(stmt)
+                await session.flush()
 
-            return list(result.scalars().all())
+                return list(result.scalars().all())
+            except IntegrityError:
+                await session.rollback()
+            
+        inserted = []
+        for feedback in feedbacks:
+            try:
+                async with self.get_session() as retry_session:
+                    single_stmt = insert(Feedback).values([feedback])
+                    single_stmt = single_stmt.on_conflict_do_update(
+                        index_elements=["id"],
+                        set_={
+                            "content": single_stmt.excluded.content,
+                            "word_count": single_stmt.excluded.word_count,
+                            "created_at": single_stmt.excluded.created_at,
+                            "edited_at": single_stmt.excluded.edited_at,
+                            "channel_id": single_stmt.excluded.channel_id,
+                        }).returning(Feedback)
+                    result = await retry_session.execute(single_stmt)
+                    inserted.extend(result.scalars().all())
+
+            except BotDatabaseException:
+                logger.warning(
+                    f"Skipping feedback {feedback['id']}, "
+                    f"user {feedback['author_id']} no longer exists"
+                )
+                continue
+        return inserted
 
     async def get_total_feedbacks(self):
         async with self.get_session() as session:

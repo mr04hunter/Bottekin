@@ -48,6 +48,60 @@ class TestFeedbackServiceIntegration:
             assert await uow.feedback.exists(554) == True
             assert await uow.feedback.exists(553) == True
 
+
+    async def test_bulk_insert_feedback_integrity_error_retry(self, uow, seeded_users, seeded_tracks):
+        now = datetime.now(tz=UTC)
+        feedback1 = {
+            "id":555,
+            "author_id":seeded_users.fb_author1.id,
+            "track_id":seeded_tracks.track1.id,
+            "thread_id":seeded_tracks.track1.id,
+            "channel_id":111,
+            "content":"nice track man",
+            "word_count":3,
+            "created_at":now}
+        
+        
+        feedback2 = {
+            "id":554,
+            "author_id":seeded_users.fb_author2.id,
+            "track_id":seeded_tracks.track1.id,
+            "thread_id":seeded_tracks.track1.id,
+            "channel_id":111,
+            "content":"nice track man second",
+            "word_count":4,
+            "created_at":now}
+
+        feedback3 = {
+            "id":553,
+            "author_id":seeded_users.fb_author3.id,
+            "track_id":seeded_tracks.track1.id,
+            "thread_id":seeded_tracks.track1.id,
+            "channel_id":111,
+            "content":"nice track man third",
+            "word_count":4,
+            "created_at":now}
+    
+        feedback4 = {
+            "id":552,
+            "author_id":2343534456465,
+            "track_id":seeded_tracks.track1.id,
+            "thread_id":seeded_tracks.track1.id,
+            "channel_id":111,
+            "content":"nice track man third",
+            "word_count":4,
+            "created_at":now}
+        
+
+        inserted = await uow.feedback.bulk_insert_feedback([feedback1, feedback2, feedback3, feedback4])
+
+        assert await uow.feedback.exists(555) == True
+        assert await uow.feedback.exists(554) == True
+        assert await uow.feedback.exists(553) == True
+        assert await uow.feedback.exists(552) == False
+            
+
+
     async def test_bulk_insert_updates_feedback(
             self, uow, seeded_users, seeded_tracks, seeded_feedbacks
     ):

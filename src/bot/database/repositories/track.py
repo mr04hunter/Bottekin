@@ -3,9 +3,11 @@ from sqlalchemy import distinct, func, or_, select, update, delete
 from sqlalchemy.dialects.postgresql import insert
 from bot.database.models import Track, TrackWithNoFeedback
 from bot.database.repositories.base import BaseRepository
+from bot.exceptions import BotDatabaseException
 from bot.logging import get_logger, log_function
 from sqlalchemy.orm import load_only
 from bot.database.models import UserLeftNotificationMessage
+from sqlalchemy.exc import IntegrityError
 
 logger = get_logger("track_repository")
 
@@ -69,20 +71,44 @@ class TrackRepository(BaseRepository):
     @log_function
     async def bulk_insert_track(self, tracks: list[dict]) -> list | None:
         async with self.get_session() as session:
-            stmt = insert(Track).values(tracks)
-            stmt = stmt.on_conflict_do_update(index_elements=["id"], set_={
-                "channel_id":stmt.excluded.channel_id,
-                "platform":stmt.excluded.platform,
-                "total_reactions":stmt.excluded.total_reactions,
-                "title":stmt.excluded.title,
-                "created_at":stmt.excluded.created_at,
-                "edited_at":stmt.excluded.edited_at,
-            }).returning(Track)
+            try:
+                stmt = insert(Track).values(tracks)
+                stmt = stmt.on_conflict_do_update(index_elements=["id"], set_={
+                    "channel_id":stmt.excluded.channel_id,
+                    "platform":stmt.excluded.platform,
+                    "total_reactions":stmt.excluded.total_reactions,
+                    "title":stmt.excluded.title,
+                    "created_at":stmt.excluded.created_at,
+                    "edited_at":stmt.excluded.edited_at,
+                }).returning(Track)
 
-            result = await session.execute(stmt)
+                result = await session.execute(stmt)
+                await session.flush()
+                
+                return list(result.scalars().all())
+            except IntegrityError:
+                await session.rollback()
+        inserted = []
+        for track in tracks:
+            try:
+                async with self.get_session() as retry_session:
+                    single_stmt = insert(Track).values([track])
+                    single_stmt = single_stmt.on_conflict_do_update(index_elements=["id"], set_={
+                    "channel_id":single_stmt.excluded.channel_id,
+                    "platform":single_stmt.excluded.platform,
+                    "total_reactions":single_stmt.excluded.total_reactions,
+                    "title":single_stmt.excluded.title,
+                    "created_at":single_stmt.excluded.created_at,
+                    "edited_at":single_stmt.excluded.edited_at,
+                    }).returning(Track)
+                    result = await retry_session.execute(single_stmt)
+                    inserted.extend(result.scalars().all())
+            except BotDatabaseException:
+                logger.warning(f"Skipping track {track['id']}, user {track['author_id']} no longer exists")
+
+        return inserted
+
             
-            return list(result.scalars().all())
-                    
            
 
                     
