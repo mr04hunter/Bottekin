@@ -151,7 +151,7 @@ class FeedbackRepository(BaseRepository):
                     })
 
                     await session.execute(stmt)
-                    await session.flush()
+
                 except IntegrityError:
                     await session.rollback()
             

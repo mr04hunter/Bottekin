@@ -100,7 +100,69 @@ class TestFeedbackServiceIntegration:
         assert await uow.feedback.exists(553) == True
         assert await uow.feedback.exists(552) == False
             
+    async def test_bulk_insert_feedback_update_relations_integrity_error_retry(self, uow, seeded_users, seeded_tracks):
+        now = datetime.now(tz=UTC)
+        feedback1 = {
+            "id":555,
+            "author_id":seeded_users.fb_author1.id,
+            "track_id":seeded_tracks.track1.id,
+            "thread_id":seeded_tracks.track1.id,
+            "channel_id":111,
+            "content":"nice track man",
+            "word_count":3,
+            "created_at":now}
+        
+        
+        feedback2 = {
+            "id":554,
+            "author_id":seeded_users.fb_author2.id,
+            "track_id":seeded_tracks.track1.id,
+            "thread_id":seeded_tracks.track1.id,
+            "channel_id":111,
+            "content":"nice track man second",
+            "word_count":4,
+            "created_at":now}
 
+        feedback3 = {
+            "id":553,
+            "author_id":seeded_users.fb_author3.id,
+            "track_id":seeded_tracks.track1.id,
+            "thread_id":seeded_tracks.track1.id,
+            "channel_id":111,
+            "content":"nice track man third",
+            "word_count":4,
+            "created_at":now}
+    
+        feedback4 = {
+            "id":552,
+            "author_id":2343534456465,
+            "track_id":seeded_tracks.track1.id,
+            "thread_id":seeded_tracks.track1.id,
+            "channel_id":111,
+            "content":"nice track man third",
+            "word_count":4,
+            "created_at":now}
+        
+        feedbacks = [feedback1, feedback2, feedback3, feedback4]
+
+        feedback_data = [{"track_id":f["track_id"], "user_id":f["author_id"], "feedback_id":f["id"]} for f in feedbacks]
+
+        async with uow.transaction() as t:
+            inserted = await t.feedback.bulk_insert_feedback([feedback1, feedback2, feedback3, feedback4])
+            inserted_ids = {f.id for f in inserted} if inserted else set()
+            valid_relations = [
+                r for r in feedback_data 
+                if r["feedback_id"] in inserted_ids
+            ]
+            if valid_relations:
+                await t.feedback.bulk_update_relations(feedback_track_data=valid_relations)
+
+
+        assert await uow.feedback.exists(555) == True
+        assert await uow.feedback.exists(554) == True
+        assert await uow.feedback.exists(553) == True
+        assert await uow.feedback.exists(552) == False
+            
 
     async def test_bulk_insert_updates_feedback(
             self, uow, seeded_users, seeded_tracks, seeded_feedbacks

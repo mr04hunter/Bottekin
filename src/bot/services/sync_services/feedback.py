@@ -148,9 +148,15 @@ class FeedbackSyncService(BaseService):
                     logger.debug("bulk inserting feedbacks")
                     async with self.uow.transaction() as t:
                         await t.feedback.bulk_delete_with_author_threads(feedback_ids=feedback_ids_in_batch, author_ids=author_ids_in_batch, thread_id=thread.id)
-                        await t.feedback.bulk_insert_feedback(feedbacks=feedbacks)
+                        inserted_feedbacks = await t.feedback.bulk_insert_feedback(feedbacks=feedbacks)
                         if feedback_track_data:
-                            await t.feedback.bulk_update_relations(feedback_track_data=feedback_track_data)
+                            inserted_ids = {f.id for f in inserted_feedbacks} if inserted_feedbacks else set()
+                            valid_relations = [
+                                r for r in feedback_track_data 
+                                if r["feedback_id"] in inserted_ids
+                            ]
+                            if valid_relations:
+                                await t.feedback.bulk_update_relations(feedback_track_data=valid_relations)
                     feedbacks.clear()
                     feedback_track_data.clear()
                     logger.debug("bulk inserted feedbacks")
@@ -168,9 +174,16 @@ class FeedbackSyncService(BaseService):
             logger.debug("Adding remaining feedbacks")
             async with self.uow.transaction() as t:
                 await t.feedback.bulk_delete_with_author_threads(feedback_ids=feedback_ids_in_batch, author_ids=author_ids_in_batch, thread_id=thread.id)
-                await t.feedback.bulk_insert_feedback(feedbacks=feedbacks)
+                inserted_feedbacks = await t.feedback.bulk_insert_feedback(feedbacks=feedbacks)
                 if feedback_track_data:
-                    await t.feedback.bulk_update_relations(feedback_track_data=feedback_track_data)
+                    inserted_ids = {f.id for f in inserted_feedbacks} if inserted_feedbacks else set()
+                    valid_relations = [
+                        r for r in feedback_track_data 
+                        if r["feedback_id"] in inserted_ids
+                    ]
+                    if valid_relations:
+                        await t.feedback.bulk_update_relations(feedback_track_data=valid_relations)
+                    
             
             logger.debug("Added remaining feedbacks")
         
