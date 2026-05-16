@@ -119,7 +119,7 @@ class UserService(BaseService):
         if not message:
             return
         if message.thread:
-            notif_message = await self.bot.client.safe_discord_write_call(coro=lambda th=message.thread:th.send("The author of this track has left the server"), operation="notify user left send message")
+            notif_message = await self.bot.client.safe_discord_write_call(coro=lambda th=message.thread:th.send("**The author of this track has left the server.**"), operation="notify user left send message")
             if not notif_message:
                 return
            

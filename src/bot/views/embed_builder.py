@@ -82,16 +82,17 @@ class EmbedBuilder:
 
         if feedback_stats.most_feedbacked_members:
             author_lines = []
+            r = 1
             for author_name, count in feedback_stats.most_feedbacked_members: 
 
-                text = (f"{display_name} gave **{count}** feedback "
+                text = (f"{r}. {display_name} gave **{count}** feedback "
                 f"{"message" + self._check_plural(length=count)} to {author_name}"
                 f"{self._put_separator(length=len(feedback_stats.most_feedbacked_members))}")
                 author_lines.append(text)
                 logger.bind(
                     author_mention=author_name,
                 ).debug("Author & display name debug")
-            
+                r += 1
             most_feedbacked_authors_text = "".join(author_lines)
 
             feedback_embed.add_field(name=f"**TOP 3 MEMBERS {display_name.upper()} SUPPORTED THE MOST**", value=most_feedbacked_authors_text, inline=False)
@@ -106,8 +107,8 @@ class EmbedBuilder:
         if music_stats.total_tracks == 0:
             return
         
-        music_text = (f"{display_name} shared **{music_stats.total_tracks}** {"track" + self._check_plural(length=music_stats.total_tracks)} to get feedback.\n"
-                      f"Total feedback received: **{music_stats.total_feedback_received}**")
+        music_text = (f"Total {"track" + self._check_plural(length=music_stats.total_tracks)} {display_name} shared: **{music_stats.total_tracks}**\n"
+                      f"Total feedback messages {display_name} received: **{music_stats.total_feedback_received}**")
 
         
         music_embed = Embed(color=Colour.red(), title="**MUSIC STATS**",description=music_text) 
@@ -171,7 +172,7 @@ class EmbedBuilder:
         f"{"challenge" + self._check_plural(length=challenge_stats.total_submissions)}.\n")
 
         if challenge_stats.total_challenges_won != 0:
-            description_text += (f"{display_name} won **{challenge_stats.total_challenges_won}**"
+            description_text += (f"{display_name} won **{challenge_stats.total_challenges_won}** "
                                  f"{"challenge" + self._check_plural(length=challenge_stats.total_challenges_won)}.\n")
 
         
@@ -317,8 +318,8 @@ class EmbedBuilder:
 
 
         description=(f"**SERVER STATS**\n"
-            f"Feedback messages: "f"**{leaderboard_data.server_total_feedback if leaderboard_data.server_total_feedback >= 0 else "No data"}**\n"
-            f"Total Tracks: "f"**{leaderboard_data.server_total_tracks if leaderboard_data.server_total_tracks >= 0 else "No data"}**\n")
+            f"Total feedback messages: "f"**{leaderboard_data.server_total_feedback if leaderboard_data.server_total_feedback >= 0 else "No data"}**\n"
+            f"Total shared tracks: "f"**{leaderboard_data.server_total_tracks if leaderboard_data.server_total_tracks >= 0 else "No data"}**\n")
 
 
         leaderboard_embed = self._create_leaderboard_base(title=title, description=description, 
