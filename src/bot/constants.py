@@ -54,13 +54,13 @@ update_most_active_periods_job_id = "most_active_periods_id"
 
 
 PERIOD_MAP: Mapping[str, dict] = {
-            "this_week":     dict(trunc_by="day",   date_type="week",  limit=1),
-            "this_month":    dict(trunc_by="day",   date_type="month", limit=1),
-            "last_3_months": dict(trunc_by="month", date_type="month", limit=3),
-            "last_6_months": dict(trunc_by="month", date_type="month", limit=6),
-            "last_12_months":dict(trunc_by="month", date_type="month", limit=12),
-            "last_4_weeks":  dict(trunc_by="week",  date_type="week",  limit=4),
-            "last_8_weeks":  dict(trunc_by="week",  date_type="week",  limit=8),
+            "this week":     dict(trunc_by="day",   date_type="week",  limit=1),
+            "this month":    dict(trunc_by="day",   date_type="month", limit=1),
+            "last 3 months": dict(trunc_by="month", date_type="month", limit=3),
+            "last 6 months": dict(trunc_by="month", date_type="month", limit=6),
+            "last 12 months":dict(trunc_by="month", date_type="month", limit=12),
+            "last 4 weeks":  dict(trunc_by="week",  date_type="week",  limit=4),
+            "last 8 weeks":  dict(trunc_by="week",  date_type="week",  limit=8),
         }
 
 

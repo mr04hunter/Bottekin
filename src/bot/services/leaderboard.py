@@ -181,7 +181,7 @@ class LeaderboardService(BaseService):
 
     @background_task(operation_name="server_activity_board_update")
     async def server_activity_board(self, choice:str) -> File | None:        
-        params = PERIOD_MAP[choice]
+        params = PERIOD_MAP[choice.lower()]
 
         
 
