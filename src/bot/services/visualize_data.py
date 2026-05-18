@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.lines import Line2D
+from matplotlib.ticker import MaxNLocator
 
 
 if TYPE_CHECKING:
@@ -18,7 +19,7 @@ class GraphService:
         GREEN  = "#0FDA52"
         PURPLE = "#531DB6"
         ORANGE = "#DF633A"
-        MUTED  = "#888888"
+        MUTED  = "#A7A5A5"
 
         fig, ax = plt.subplots(figsize=(10, 5))
         fig.patch.set_facecolor(BG)
@@ -74,6 +75,10 @@ class GraphService:
         ax.set_title("Server Activity in Community Feedback Category",
                     fontsize=14, fontweight="medium", color="#e0e0e0",
                     pad=16, loc="left")
+        
+        max_ticks = 8  # never show more than 8 labels regardless of period
+        if len(data.labels) > max_ticks:
+            ax.xaxis.set_major_locator(MaxNLocator(nbins=max_ticks, integer=True))
 
         plt.tight_layout()
 
