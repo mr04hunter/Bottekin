@@ -4,7 +4,8 @@ from bot.services import (
     StatsService, ChallengeService,
     LeaderboardService, RoleService,
     UserService, SyncService,
-    RateLimiter, TrackNotificationService
+    RateLimiter, TrackNotificationService,GraphService
+    
 )
 
 from typing import TYPE_CHECKING
@@ -47,8 +48,8 @@ class ServiceContainer:
         uow=self.uow, bot=self.bot, event_handler=event_handler,
         scheduler=scheduler,extractor=extractor, validator=self.challenge_validator,
         config=config, track_extractor=track_extractor)
-
-        self.leaderboard = LeaderboardService(uow=self.uow, bot=self.bot, converter=converter, config=self.config)
+        self.visualize_service = GraphService()
+        self.leaderboard = LeaderboardService(uow=self.uow, bot=self.bot, converter=converter, config=self.config, visualize_data=self.visualize_service)
         self.role = RoleService(uow=self.uow, bot=self.bot, config=self.config)
         self.sync_service = SyncService(
         uow=self.uow, bot=self.bot,extractor=extractor,

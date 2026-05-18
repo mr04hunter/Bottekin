@@ -40,8 +40,21 @@ class FeedbackLeaderboardData(BaseLeaderboardData):
 
 @dataclass
 class ServerActivityData:
-    track_count: int
-    feedback_count: int
+    labels: list
+    feedback_data: list
+    track_data: list
+
+
+    @property
+    def total(self):
+        total_values = []
+
+        for i in range(0, len(self.labels)):
+            current_total = self.feedback_data[i] + self.track_data[i]
+            total_values.append(current_total)
+
+        return total_values
+
 
 
 @dataclass

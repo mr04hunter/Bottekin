@@ -8,6 +8,7 @@ from bot.services.sync_services.sync_service import SyncService
 from bot.services.role import RoleService
 from bot.services.rate_limiter import RateLimiter
 from bot.services.track_notification_service import TrackNotificationService
+from bot.services.visualize_data import GraphService
 from bot.services.container import create_service_container
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "TrackService", "StatsService",
     "SyncService", "RoleService",
     "create_service_container",
-    "RateLimiter", "TrackNotificationService"]
+    "RateLimiter", "TrackNotificationService",
+    "GraphService"]

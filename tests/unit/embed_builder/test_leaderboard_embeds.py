@@ -304,49 +304,49 @@ class TestLeaderboardEmbedBuilder:
         assert leaderboard_val == "\nNot enough data yet\nA leaderboard will be displayed here!"
 
 
-    def test_server_activity_board(self, builder):
-        today_activity = ServerActivityData(
-            track_count=10, feedback_count=10
-        )
-        week_activity = ServerActivityData(
-            track_count=9, feedback_count=9
-        )
-        month_activity = ServerActivityData(
-            track_count=8, feedback_count=8
-        )
+    # def test_server_activity_board(self, builder):
+    #     today_activity = ServerActivityData(
+    #         track_count=10, feedback_count=10
+    #     )
+    #     week_activity = ServerActivityData(
+    #         track_count=9, feedback_count=9
+    #     )
+    #     month_activity = ServerActivityData(
+    #         track_count=8, feedback_count=8
+    #     )
 
-        leaderboard_data = ServerActivityDisplay(
-            today_activity=today_activity,
-            week_activity=week_activity,
-            month_activity=month_activity
-        )
+    #     leaderboard_data = ServerActivityDisplay(
+    #         today_activity=today_activity,
+    #         week_activity=week_activity,
+    #         month_activity=month_activity
+    #     )
 
-        embed = builder.create_server_activity_board(activity_data=leaderboard_data)
+    #     embed = builder.create_server_activity_board(activity_data=leaderboard_data)
 
-        embed_data = embed.to_dict()
+    #     embed_data = embed.to_dict()
 
-        title = embed_data.get("title")
-        description = embed_data.get("description")
+    #     title = embed_data.get("title")
+    #     description = embed_data.get("description")
 
-        assert title == "**SERVER ACTIVITY**"
-        assert description == "Daily/Weekly/monthly server activity in Community Feedback category."
+    #     assert title == "**SERVER ACTIVITY**"
+    #     assert description == "Daily/Weekly/monthly server activity in Community Feedback category."
 
-        fields = embed_data.get("fields")
+    #     fields = embed_data.get("fields")
 
-        daily_field, weekly_field, monthly_field = fields
+    #     daily_field, weekly_field, monthly_field = fields
 
-        daily_val = daily_field.get("value")
-        weekly_val = weekly_field.get("value")
-        monthly_val = monthly_field.get("value")
+    #     daily_val = daily_field.get("value")
+    #     weekly_val = weekly_field.get("value")
+    #     monthly_val = monthly_field.get("value")
 
-        assert str(leaderboard_data.today_activity.feedback_count) in daily_val
-        assert str(leaderboard_data.today_activity.track_count) in daily_val
+    #     assert str(leaderboard_data.today_activity.feedback_count) in daily_val
+    #     assert str(leaderboard_data.today_activity.track_count) in daily_val
 
-        assert str(leaderboard_data.week_activity.feedback_count) in weekly_val
-        assert str(leaderboard_data.week_activity.track_count) in weekly_val
+    #     assert str(leaderboard_data.week_activity.feedback_count) in weekly_val
+    #     assert str(leaderboard_data.week_activity.track_count) in weekly_val
 
-        assert str(leaderboard_data.month_activity.feedback_count) in monthly_val
-        assert str(leaderboard_data.month_activity.track_count) in monthly_val
+    #     assert str(leaderboard_data.month_activity.feedback_count) in monthly_val
+    #     assert str(leaderboard_data.month_activity.track_count) in monthly_val
 
 
 

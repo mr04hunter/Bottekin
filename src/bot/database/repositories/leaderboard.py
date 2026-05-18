@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
+from dateutil.relativedelta import relativedelta
 from sqlalchemy import select, desc, distinct, union_all, literal
 from bot.database.models import MonthlyChallenge, Track, Vote, Submission, User, Challenge, Leaderboards, Feedback
 from bot.database.repositories.base import BaseRepository
@@ -106,14 +107,69 @@ class LeaderboardRepository(BaseRepository):
             return leaderboard_data
         
 
-    async def get_server_activity_data(self, date: datetime) -> ServerActivityData:
+    async def get_server_activity_data(self, trunc_by:str, date_type:str, limit:int) -> ServerActivityData | None:
         async with self.get_session() as session:
-            track_count = (await session.execute(select(func.count(distinct(Track.id))).filter(Track.created_at >= date))).scalar_one()
-            feedback_count = (await session.execute(select(func.count(distinct(Feedback.id))).filter(Feedback.created_at >= date))).scalar_one()
+            now = datetime.now(tz=UTC)
+            now = now.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=UTC)
+            start_date = None
+            if date_type == "month":
+                start_date = now.replace(day=1) - relativedelta(months=limit - 1)
             
+            elif date_type == "week":
+                start_date = now - timedelta(weeks=limit)
+                start_date = start_date - timedelta(days=start_date.weekday())
+
+            
+            def generate_periods(start: datetime, trunc_by: str) -> list[datetime]:
+                periods = []
+                current = start
+                while current <= now:
+                    periods.append(current)
+                    if trunc_by == "day":
+                        current += timedelta(days=1)
+                    elif trunc_by == "week":
+                        current += timedelta(weeks=1)
+                    elif trunc_by == "month":
+                        current += relativedelta(months=1)
+                return periods
+            
+            if not start_date:
+                return
+            track_result = (await session.execute(
+                select(
+                func.date_trunc(trunc_by, Track.created_at).label("period"),
+                func.count(distinct(Track.id)).label("track_count")).where(Track.created_at>=start_date).group_by("period").order_by("period"))).all()
+            
+            feedback_result = (await session.execute(
+                select(
+                func.date_trunc(trunc_by, Feedback.created_at).label("period"),
+                func.count(distinct(Feedback.id)).label("feedback_count")).where(Feedback.created_at>=start_date).group_by("period").order_by("period"))).all()
+            
+            
+            
+            fmt_map = {
+            "day":   "%b %d",
+            "week":  "Week %W",
+            "month": "%B",
+            }
+            fmt = fmt_map[trunc_by]
+
+            
+
+            track_result_map = {row.period: row.track_count for row in track_result}
+            print(f"t map {track_result_map}")
+            feedback_result_map = {row.period: row.feedback_count for row in feedback_result}
+
+            all_periods = generate_periods(start_date, trunc_by)
+            print(f"periods {all_periods}")
+            labels = [p.strftime(fmt) for p in all_periods]
+            track_values = [track_result_map.get(p, 0) for p in all_periods]
+            feedback_values = [feedback_result_map.get(p, 0) for p in all_periods]
+
             return ServerActivityData(
-                track_count=track_count,
-                feedback_count=feedback_count
+                labels=labels,
+                feedback_data=feedback_values,
+                track_data=track_values
             )
         
     async def get_most_active_periods(self, admin_id:int) -> tuple[dict[str, MostActivePeriodData], MostActiveMemberData] | None:

@@ -88,20 +88,39 @@ class ModeratorGroup(app_commands.Group, name="moderator", description="moderato
         super().__init__()
 
     @app_commands.command(name="server_activity", description="Displays server activity data")
-    async def server_activity(self, interaction: Interaction):
+    async def server_activity(self, interaction: Interaction, choice:str):
         await interaction.response.defer(ephemeral=True)
-        embeds = []
-        most_active_dates = await self.services.leaderboard.create_most_active_dates_board()
-        server_activity = await self.services.leaderboard.server_activity_board()
-        if most_active_dates:
-            embeds.append(most_active_dates)
-        if server_activity:
-            embeds.append(server_activity)
 
-        if not embeds:
-            await interaction.followup.send("Not enough data to display.", ephemeral=True)
+        file = await self.services.leaderboard.server_activity_board(choice=choice)
+
+        if not file:
+            await interaction.followup.send(content="Not enough data or invalid date selection.")
             return
-        await interaction.followup.send(embeds=embeds, ephemeral=True)
+
+        await interaction.followup.send(content="Community Feedback Category Activity Graph", file=file, ephemeral=True)
+
+    
+
+    @server_activity.autocomplete("choice")
+    async def server_activity_autocomplete(
+        self,
+        interaction: Interaction,
+        current: str
+    ) -> List[app_commands.Choice[str]]:
+        CHOICES = [
+            "This Week",
+            "This Month",
+            "Last 3 Months",
+            "Last 6 Months",
+            "Last 12 Months",
+            "Last 4 Weeks",
+            "Last 8 Weeks",
+        ]
+        
+        return [
+            app_commands.Choice(name=choice, value=choice)
+            for choice in CHOICES if current.lower() in choice.lower()
+        ]
 
 class AdminCommandCog(Cog):
     def __init__(self, bot:"Bottekin", services:"ServiceContainer", config:"Config") -> None:

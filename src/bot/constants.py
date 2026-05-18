@@ -1,3 +1,4 @@
+from typing import Mapping
 from discord import Object
 
 
@@ -52,3 +53,28 @@ update_most_active_periods_job_id = "most_active_periods_id"
 
 
 
+PERIOD_MAP: Mapping[str, dict] = {
+            "this_week":     dict(trunc_by="day",   date_type="week",  limit=1),
+            "this_month":    dict(trunc_by="day",   date_type="month", limit=1),
+            "last_3_months": dict(trunc_by="month", date_type="month", limit=3),
+            "last_6_months": dict(trunc_by="month", date_type="month", limit=6),
+            "last_12_months":dict(trunc_by="month", date_type="month", limit=12),
+            "last_4_weeks":  dict(trunc_by="week",  date_type="week",  limit=4),
+            "last_8_weeks":  dict(trunc_by="week",  date_type="week",  limit=8),
+        }
+
+
+MONTH_MAP = {
+        "January":"Jan",
+        "February":"Feb",
+        "March":"Mar",
+        "April":"Apr",
+        "May":"May",
+        "June":"June",
+        "July":"July",
+        "August":"Aug",
+        "September":"Sept",
+        "October":"Oct",
+        "November":"Nov",
+        "December":"Dec"
+        }

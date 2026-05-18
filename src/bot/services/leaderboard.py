@@ -1,10 +1,12 @@
 import asyncio
 from datetime import datetime, timedelta, UTC
+import re
 from typing import TYPE_CHECKING, cast
+
 from bot.database.unit_of_work import UnitOfWork
 from bot.exceptions import BotDiscordApiError
 from bot.logging import get_logger
-from discord import NotFound, TextChannel, Embed, Message
+from discord import NotFound, TextChannel, Embed, Message, File
 from bot.types.leaderboards.presentation import (
     MostActiveMemberDisplay,
     MostActivePeriodDisplay,
@@ -18,7 +20,8 @@ from bot.constants import (
     CURRENT_CHALLENGE_LEADERBOARD_TYPE,
     ALL_TIME_CHALLENGE_WON_LEADERBOARD_TYPE,
     SERVER_ACTIVITY_LEADERBOARD_TYPE,
-    MOST_ACTIVE_PERIODS_BOARD_TYPE)
+    MOST_ACTIVE_PERIODS_BOARD_TYPE,
+    PERIOD_MAP, MONTH_MAP)
 
 
 from bot.views.embed_builder import EmbedBuilder
@@ -29,16 +32,18 @@ if TYPE_CHECKING:
     from bot.types.protocols import ChannelProvider
     from bot.utils.converters import BotConverter
     from bot.config import Config
+    from bot.services.visualize_data import GraphService
 
 from bot.error_handler.decorators import background_task, discord_operation
 
 logger = get_logger("leaderboard_service")
 
 class LeaderboardService(BaseService):
-    def __init__(self, uow: UnitOfWork, bot: "ChannelProvider", converter:"BotConverter", config: "Config") -> None:
+    def __init__(self, uow: UnitOfWork, bot: "ChannelProvider", converter:"BotConverter", config: "Config", visualize_data:"GraphService") -> None:
         super().__init__(uow, bot)
         self.converter = converter
         self.config = config
+        self.visualize = visualize_data
 
 
     @discord_operation
@@ -175,27 +180,32 @@ class LeaderboardService(BaseService):
         
 
     @background_task(operation_name="server_activity_board_update")
-    async def server_activity_board(self) -> Embed | None:
-        today_date = datetime.now(tz=UTC) - timedelta(days=1)
-        week_date = datetime.now(tz=UTC) - timedelta(weeks=1)
-        month_date = datetime.now(tz=UTC) - timedelta(days=30)
+    async def server_activity_board(self, choice:str) -> File | None:        
+        params = PERIOD_MAP[choice]
+
         
-        async with self.uow.transaction() as t:
-            today_activity = await t.leaderboards.get_server_activity_data(date=today_date)
-            week_activity = await t.leaderboards.get_server_activity_data(date=week_date)
-            month_activity = await t.leaderboards.get_server_activity_data(date=month_date)
 
-            server_activity_display = ServerActivityDisplay(
-                today_activity=today_activity,
-                week_activity=week_activity,
-                month_activity=month_activity
-            )
+        activity_data = await self.uow.leaderboards.get_server_activity_data(**params)
+        
+        if not activity_data:
+            return
 
-        embed_builder = EmbedBuilder()
+        if params["trunc_by"] == "month":
+            abbreviated = []
+            for label in activity_data.labels:
+                abbreviated.append(MONTH_MAP[label])
 
-        server_activity_embed = embed_builder.create_server_activity_board(activity_data=server_activity_display)
+            activity_data.labels = abbreviated
 
-        return server_activity_embed
+        elif params["trunc_by"] == "day":    
+            labels = self.abbreviate_month_names(activity_data.labels)
+            if not labels:
+                return
+            activity_data.labels = labels
+
+        graph_data = self.visualize.create_graph(data=activity_data)
+        dc_file = File(fp=graph_data, filename="activity.png")
+        return dc_file
 
 
     async def get_challenge_role_users(self) -> list[User] | None:
@@ -207,3 +217,20 @@ class LeaderboardService(BaseService):
         users = await self.uow.leaderboards.get_feedback_role_users()
 
         return users
+    
+
+
+    def abbreviate_month_names(self, labels:list) -> list | None:
+        
+        r = r"([a-zA-Z]*) ([0-9]*)"
+        abbreviated_labels = []
+        for label in labels:
+            groups = re.findall(r, label)
+
+            if not groups:
+                return
+            
+            name, value = groups[0]
+            abbreviated_labels.append(f"{MONTH_MAP[name]} {value}")
+
+        return abbreviated_labels

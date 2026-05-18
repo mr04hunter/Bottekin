@@ -1,4 +1,6 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, tzinfo
+
+from matplotlib.dates import relativedelta
 
 
 
@@ -27,38 +29,97 @@ class TestLeaderboardRepository:
         assert data.server_total_feedback == 0
         assert data.data == []
 
-    async def test_get_daily_server_activity_data(self, uow, seeded_activity_feedbacks, seeded_activity_tracks):
-        from datetime import timezone
-        yesterday = datetime.now(tz=UTC) - timedelta(days=1)
-        tracks = await seeded_activity_tracks(yesterday)
-        feedbacks = await seeded_activity_feedbacks(yesterday)
+    # async def test_get_daily_server_activity_data(self, uow, seeded_activity_feedbacks, seeded_activity_tracks):
+    #     from datetime import timezone
+    #     yesterday = datetime.now(tz=UTC) - timedelta(days=1)
+    #     tracks = await seeded_activity_tracks(yesterday)
+    #     feedbacks = await seeded_activity_feedbacks(yesterday)
 
-        data = await uow.leaderboards.get_server_activity_data(date=yesterday)
+    #     data = await uow.leaderboards.get_server_activity_data(date=yesterday)
 
-        assert data.feedback_count == feedbacks.total_feedbacks
-        assert data.track_count == tracks.total_tracks
+    #     assert data.feedback_count == feedbacks.total_feedbacks
+    #     assert data.track_count == tracks.total_tracks
 
     async def test_get_weekly_server_activity_data(self, uow, seeded_activity_feedbacks, seeded_activity_tracks):
         from datetime import timezone
-        last_week = datetime.now(tz=UTC) - timedelta(days=7)
+        last_week = datetime.now(tz=UTC)
         tracks = await seeded_activity_tracks(last_week)
         feedbacks = await seeded_activity_feedbacks(last_week)
 
-        data = await uow.leaderboards.get_server_activity_data(date=last_week)
+        data = await uow.leaderboards.get_server_activity_data(trunc_by="day", limit=1, date_type="week")
+        print(f"labels {data.labels}")
+        print(f"fb {data.feedback_data}")
+        print(f"track {data.track_data}")
+        print(f"total {data.total}")
 
-        assert data.feedback_count == feedbacks.total_feedbacks
-        assert data.track_count == tracks.total_tracks
+        assert len(data.labels) == 8
+        assert len(data.track_data) == 8
+        assert len(data.feedback_data) == 8
+
+        assert data.feedback_data[-1] == 3
+        assert data.track_data[-1] == 3
+
+
+    async def test_get_weekly_server_activity_data_trunc_by_week(self, uow, seeded_activity_feedbacks, seeded_activity_tracks):
+        from datetime import timezone
+        last_week = datetime.now(tz=UTC)
+        tracks = await seeded_activity_tracks(last_week)
+        feedbacks = await seeded_activity_feedbacks(last_week)
+
+        data = await uow.leaderboards.get_server_activity_data(trunc_by="week", limit=1, date_type="week")
+        
+        assert len(data.labels) == 2
+        assert len(data.track_data) == 2
+        assert len(data.feedback_data) == 2
+
+        assert data.feedback_data[-1] == 3
+        assert data.track_data[-1] == 3
 
     async def test_get_monthly_server_activity_data(self, uow, seeded_activity_feedbacks, seeded_activity_tracks):
         from datetime import timezone
-        last_month = datetime.now(tz=UTC) - timedelta(days=30)
-        tracks = await seeded_activity_tracks(last_month)
-        feedbacks = await seeded_activity_feedbacks(last_month)
+        
+        tracks = await seeded_activity_tracks(datetime.now(tz=UTC))
+        feedbacks = await seeded_activity_feedbacks(datetime.now(tz=UTC))
 
-        data = await uow.leaderboards.get_server_activity_data(date=last_month)
+        data = await uow.leaderboards.get_server_activity_data(trunc_by="month", limit=6, date_type="month")
 
-        assert data.feedback_count == feedbacks.total_feedbacks
-        assert data.track_count == tracks.total_tracks
+        print(f"labels {data.labels}")
+        print(f"fb {data.feedback_data}")
+        print(f"track {data.track_data}")
+        print(f"total {data.total}")
+
+        
+        assert len(data.labels) == 6
+        assert len(data.track_data) == 6
+        assert len(data.feedback_data) == 6
+
+        assert data.feedback_data[-1] == 3
+        assert data.track_data[-1] == 3
+
+
+    async def test_get_monthly_server_activity_data_trunc_by_day(self, uow, seeded_activity_feedbacks, seeded_activity_tracks):
+        from datetime import timezone
+        
+        tracks = await seeded_activity_tracks(datetime.now(tz=UTC))
+        feedbacks = await seeded_activity_feedbacks(datetime.now(tz=UTC))
+
+        data = await uow.leaderboards.get_server_activity_data(trunc_by="day", limit=6, date_type="month")
+
+        print(f"labels {data.labels}")
+        print(f"fb {data.feedback_data}")
+        print(f"track {data.track_data}")
+        print(len(data.labels))
+
+        now = datetime.now(tz=UTC)
+        start_date = now.replace(day=1) - relativedelta(months=6 - 1)
+        end_date = now
+        total_days = (end_date - start_date).days + 1  # +1 to include today
+        assert len(data.labels) == total_days
+        assert len(data.track_data) == total_days
+        assert len(data.feedback_data) == total_days
+
+        assert data.feedback_data[-1] == 3
+        assert data.track_data[-1] == 3
 
     async def test_lb_message_id_insert_and_get(self, uow):
         await uow.leaderboards.insert_lb_message_id(99999, "test_type")
