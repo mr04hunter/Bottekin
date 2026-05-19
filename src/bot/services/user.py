@@ -1,7 +1,7 @@
 from discord import TextChannel, Thread
 from bot.database.models import User
 from bot.database.unit_of_work import UnitOfWork
-from bot.events.event import UPDATE_CURRENT_CHALLENGE_LEADERBOARD, UPDATE_SUBMISSIONS_LEADERBOARD, UPDATE_WINNERS_LEADERBOARD, UPDATE_FEEDBACK_LEADERBOARD
+from bot.events.event import UPDATE_CURRENT_CHALLENGE_LEADERBOARD, UPDATE_SUBMISSIONS_LEADERBOARD, UPDATE_WINNERS_LEADERBOARD, UPDATE_FEEDBACK_LEADERBOARD, SET_FEEDBACK_ROLE, SET_CHALLENGE_ROLE
 from bot.logging import get_logger
 from bot.services.base_service import BaseService
 from bot.types import UserData
@@ -64,6 +64,9 @@ class UserService(BaseService):
         await self._safe_emit(UPDATE_CURRENT_CHALLENGE_LEADERBOARD)
         await self._safe_emit(UPDATE_WINNERS_LEADERBOARD)
         await self._safe_emit(UPDATE_FEEDBACK_LEADERBOARD)
+        await self._safe_emit(SET_FEEDBACK_ROLE)
+        await self._safe_emit(SET_CHALLENGE_ROLE)
+
 
     async def set_purge_data(self, user_id: int, purge: bool) -> None:
         exists = await self.uow.users.exists(user_id)
