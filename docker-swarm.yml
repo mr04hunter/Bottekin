@@ -127,7 +127,7 @@ services:
       - metrics_secret_token
 
     ports:
-      - 8000:8000
+      - "127.0.0.1:8000:8000"
     volumes:
       - /dc-bot-project/words.txt:/app/words.txt
       - /dc-bot-project/logs:/app/logs
@@ -200,7 +200,7 @@ services:
         max_attempts: 3
 
     ports:
-      - "12345:12345"
+      - "127.0.0.1:12345:12345"
     
     init: true
     
@@ -211,7 +211,7 @@ services:
   node-exporter:
     image: prom/node-exporter:v1.9.1
     ports:
-      - "9100:9100"
+      - "127.0.0.1:9100:9100"
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
@@ -263,7 +263,7 @@ services:
 
 
     ports:
-      - "9187:9187"
+      - "127.0.0.1:9187:9187"
     depends_on:
       - postgres
     networks:
