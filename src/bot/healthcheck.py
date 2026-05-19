@@ -1,4 +1,5 @@
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Response, Depends, HTTPException
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST, REGISTRY
 import asyncpg
 import time
@@ -33,6 +34,18 @@ bot_uptime_seconds = Gauge(
     'Bot uptime in seconds'
 )
 
+
+
+_bearer_scheme = HTTPBearer(auto_error=False)
+
+async def verify_metrics_token(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme)
+) -> None:
+    if not credentials or credentials.credentials != config.metrics_secret_token:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+
+
 @app.get("/health")
 async def health() -> Tuple[Dict[str, str], int]:
     start_time = time.time()
@@ -53,7 +66,7 @@ async def health() -> Tuple[Dict[str, str], int]:
     finally:
         health_check_duration.observe(time.time() - start_time)
 
-@app.get("/metrics")
+@app.get("/metrics", dependencies=[Depends(verify_metrics_token)])
 async def metrics() -> Response:
     return Response(
         content=generate_latest(REGISTRY),

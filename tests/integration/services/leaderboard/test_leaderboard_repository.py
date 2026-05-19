@@ -52,9 +52,11 @@ class TestLeaderboardRepository:
         print(f"track {data.track_data}")
         print(f"total {data.total}")
 
-        assert len(data.labels) == 8
-        assert len(data.track_data) == 8
-        assert len(data.feedback_data) == 8
+        total_days = 7 + last_week.weekday() + 1
+
+        assert len(data.labels) == total_days
+        assert len(data.track_data) == total_days
+        assert len(data.feedback_data) == total_days
 
         assert data.feedback_data[-1] == 3
         assert data.track_data[-1] == 3

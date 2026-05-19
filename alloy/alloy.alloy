@@ -93,11 +93,6 @@ discovery.relabel "swarm_services" {
       service     = "postgres-exporter",
     },
  
-    {
-      __address__ = "discord-bot:8000",
-      job         = "discord-bot",
-      service     = "discord-bot",
-    },
 
     {
       __address__ = "alertmanager:9093",
@@ -125,6 +120,31 @@ discovery.relabel "swarm_services" {
 }
 
 
+local.file "metrics_token" {
+  filename  = "/run/secrets/metrics_secret_token"
+  is_secret = true
+}
+
+discovery.relabel "discord_bot" {
+  targets = [
+    {
+      __address__ = "discord-bot:8000",
+      job         = "discord-bot",
+      service     = "discord-bot",
+    },
+  ]
+  rule {
+    target_label = "environment"
+    replacement  = env("ENVIRONMENT")
+  }
+  rule {
+    target_label = "cluster"
+    replacement  = "docker-swarm"
+  }
+}
+
+
+
 prometheus.scrape "swarm_scrape" {
   targets = discovery.relabel.swarm_services.output
   
@@ -133,6 +153,12 @@ prometheus.scrape "swarm_scrape" {
   ]
  
 
+}
+
+prometheus.scrape "discord_bot_scrape" {
+  targets        = discovery.relabel.discord_bot.output
+  bearer_token   = local.file.metrics_token.content
+  forward_to     = [prometheus.remote_write.grafana_cloud.receiver]
 }
 
 prometheus.remote_write "grafana_cloud" {

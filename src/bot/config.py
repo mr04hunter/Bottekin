@@ -66,6 +66,9 @@ class Config(BaseSettings):
     tracks_no_feedback_channel_id: int = Field(default=...)
     guild_id: int = Field(default=...)
 
+
+    metrics_secret_token: str = Field(default=...)
+
     redis_host: str = Field(default=...)
     redis_password: str = Field(default=...)
     dyno_id: int = Field(default=...)
@@ -129,6 +132,8 @@ class Config(BaseSettings):
     @property    
     def all_submission_channel_ids(self) -> list[int]:
         return [*self.submission_channel_ids, self.monthly_challenge_channel_id]
+    
+
 
     @field_validator("log_level")
     @classmethod

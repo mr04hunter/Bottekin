@@ -124,6 +124,7 @@ services:
       - spotify_api_client_secret
       - redis_password
       - redis_host
+      - metrics_secret_token
 
     ports:
       - 8000:8000
@@ -179,6 +180,7 @@ services:
     secrets:
       - grafana_loki_password
       - grafana_password
+      - metrics_secret_token
     
     command: 
       - run
@@ -309,6 +311,8 @@ secrets:
   spotify_api_client_secret:
     external: true
   grafana_prometheus_url:
+    external: true
+  metrics_secret_token:
     external: true
 
   redis_password:

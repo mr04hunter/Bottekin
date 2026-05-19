@@ -1,6 +1,7 @@
 import asyncio
 
 from bot.database.unit_of_work import UnitOfWork
+from bot.exceptions import BotDatabaseException
 from bot.logging import get_logger
 from discord import NotFound, Object
 from datetime import datetime, timedelta, UTC
@@ -35,7 +36,17 @@ class TrackNotificationService(BaseService):
                         operation="send track_with_no_feedback message")
                     if not message:
                         return
-                    await t.tracks.create_track_with_no_feedback(track_id=thread.id, message_id=message.id, url=thread.jump_url, created_at=message.created_at)
+                    try:
+                        await t.tracks.create_track_with_no_feedback(track_id=thread.id, message_id=message.id, url=thread.jump_url, created_at=message.created_at)
+                    except BotDatabaseException as e:
+                        logger.bind(
+                            error=str(e),
+                            track_id=str(track_id)
+                        ).warning("Failed to insert track_no_feedback")
+                        await self.bot.client.safe_discord_write_call(
+                        coro=lambda:message.delete(), 
+                        operation="track_with_no_feedback delete failed to insert track_with_no_feedback message")
+                        return
                 except NotFound as e:
                     logger.bind(
                         error=str(e)
@@ -73,7 +84,17 @@ class TrackNotificationService(BaseService):
                         operation="send track with no feedback message")
                     if not message:
                         return
-                    await t.tracks.create_track_with_no_feedback(track_id=thread.id, message_id=message.id, url=thread.jump_url, created_at=message.created_at)
+                    try:
+                        await t.tracks.create_track_with_no_feedback(track_id=thread.id, message_id=message.id, url=thread.jump_url, created_at=message.created_at)
+                    except BotDatabaseException as e:
+                        logger.bind(
+                            error=str(e),
+                            track_id=str(track_id)
+                        ).warning("Failed to insert track_no_feedback")
+                        await self.bot.client.safe_discord_write_call(
+                        coro=lambda:message.delete(), 
+                        operation="track_with_no_feedback delete failed to insert track_with_no_feedback message")
+                        return
                     return
                     
                 await self.bot.client.safe_discord_write_call(
